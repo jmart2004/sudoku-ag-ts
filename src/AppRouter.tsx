@@ -1,23 +1,21 @@
 import React from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import { GameProvider } from "./game/GameContext";
 import HomePage from "./pages/HomePage";
-import SudokuGamePage from "./pages/SudokuGamePage";
-import SudokuStats from "./components/SudokuStats";
-import "./App.css";
+import RoomPage from "./pages/RoomPage";
+import StatsPage from "./pages/StatsPage";
 
 const App: React.FC = () => {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route
-          path="/sudokuBoard/:difficulty/:seed"
-          element={<SudokuGamePage isContinued={false}/>}
-        />
-        <Route path="/stats" element={<SudokuStats />} />
-        <Route path="/continue" element = {<SudokuGamePage isContinued={true}/>} />
-      </Routes>
-    </Router>
+    <GameProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/room/:code" element={<RoomPage />} />
+          <Route path="/stats" element={<StatsPage />} />
+        </Routes>
+      </Router>
+    </GameProvider>
   );
 };
 
