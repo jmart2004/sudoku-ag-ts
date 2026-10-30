@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faArrowRight, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { useGame } from "../game/GameContext";
 import { MAX_NAME_LENGTH, MAX_PLAYERS } from "../shared/protocol";
-import { Difficulty } from "../shared/sudoku";
+import { Difficulty } from "../shared/engine";
 import { getSavedName, saveName } from "../utility/Stats";
 import DifficultyPicker from "../components/DifficultyPicker";
-import ErrorBanner from "../components/ErrorBanner";
+import Avatar from "../components/ui/Avatar";
+import HeroBoard from "../components/HeroBoard";
 
 const HomePage: React.FC = () => {
   const { room, createLobby, joinLobby, status } = useGame();
@@ -22,75 +25,90 @@ const HomePage: React.FC = () => {
   }, [room, navigate]);
 
   const trimmedName = name.trim();
+  const ready = !!trimmedName && status === "open";
 
   return (
-    <div className="page home-page">
-      <h1 className="title">Sudoku Race</h1>
-      <p className="subtitle">
-        Up to {MAX_PLAYERS} players. One identical board. First to finish wins.
-      </p>
-      <ErrorBanner />
+    <main className="page home">
+      <section className="hero">
+        <div className="hero-copy">
+          <h1>
+            Same puzzle.
+            <br />
+            <span className="gradient-text">Fastest mind wins.</span>
+          </h1>
+          <p className="lead">
+            Race up to {MAX_PLAYERS - 1} friends on an identical sudoku. Watch
+            their progress live, avoid mistakes, and be the first to fill the
+            board.
+          </p>
+        </div>
+        <HeroBoard />
+      </section>
 
-      <label className="field">
-        <span>Your name</span>
-        <input
-          value={name}
-          maxLength={MAX_NAME_LENGTH}
-          placeholder="Enter a name"
-          onChange={(e) => setName(e.target.value)}
-        />
-      </label>
+      <section className="panel play-panel">
+        <label className="field">
+          <span className="field-label">Your name</span>
+          <span className="name-input">
+            <Avatar name={trimmedName || "?"} color="var(--accent)" />
+            <input
+              value={name}
+              maxLength={MAX_NAME_LENGTH}
+              placeholder="Enter a name"
+              onChange={(e) => setName(e.target.value)}
+            />
+          </span>
+        </label>
 
-      <div className="home-cards">
-        <section className="card">
-          <h2>Create a lobby</h2>
-          <DifficultyPicker value={difficulty} onChange={setDifficulty} />
-          <button
-            className="btn primary"
-            disabled={!trimmedName || status !== "open"}
-            onClick={() => {
-              saveName(trimmedName);
-              createLobby(trimmedName, difficulty);
-            }}
-          >
-            Create lobby
-          </button>
-        </section>
+        <div className="play-options">
+          <div className="play-option">
+            <h2>Host a race</h2>
+            <DifficultyPicker value={difficulty} onChange={setDifficulty} />
+            <button
+              className="btn primary block"
+              disabled={!ready}
+              onClick={() => {
+                saveName(trimmedName);
+                createLobby(trimmedName, difficulty);
+              }}
+            >
+              <FontAwesomeIcon icon={faPlus} /> Create lobby
+            </button>
+          </div>
 
-        <section className="card">
-          <h2>Join a lobby</h2>
+          <div className="divider">
+            <span>or</span>
+          </div>
+
           <form
+            className="play-option"
             onSubmit={(e) => {
               e.preventDefault();
               saveName(trimmedName);
               joinLobby(code, trimmedName);
             }}
           >
+            <h2>Join a friend</h2>
             <input
               className="code-input"
               value={code}
               maxLength={4}
               placeholder="CODE"
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              aria-label="Lobby code"
+              onChange={(e) =>
+                setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))
+              }
             />
             <button
               type="submit"
-              className="btn"
-              disabled={!trimmedName || code.length !== 4 || status !== "open"}
+              className="btn block"
+              disabled={!ready || code.length !== 4}
             >
-              Join
+              Join lobby <FontAwesomeIcon icon={faArrowRight} />
             </button>
           </form>
-        </section>
-      </div>
-
-      {status !== "open" && (
-        <p className="muted">Connecting to the game server…</p>
-      )}
-      <Link to="/stats" className="link">
-        My stats
-      </Link>
-    </div>
+        </div>
+      </section>
+    </main>
   );
 };
 

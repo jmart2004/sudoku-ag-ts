@@ -15,7 +15,7 @@ import {
   SelfView,
   ServerMessage,
 } from "../shared/protocol";
-import { Difficulty } from "../shared/sudoku";
+import { Difficulty } from "../shared/engine";
 
 interface Session {
   code: string;

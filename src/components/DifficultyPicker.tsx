@@ -1,5 +1,11 @@
 import React from "react";
-import { DIFFICULTIES, Difficulty, STARTING_LIVES } from "../shared/sudoku";
+import { DIFFICULTIES, Difficulty, STARTING_LIVES } from "../shared/engine";
+
+const DESCRIPTIONS: Record<Difficulty, string> = {
+  easy: "Singles only",
+  medium: "Locked candidates",
+  hard: "Pairs, triples & X-wings",
+};
 
 interface DifficultyPickerProps {
   value: Difficulty;
@@ -12,18 +18,23 @@ const DifficultyPicker: React.FC<DifficultyPickerProps> = ({
   onChange,
   disabled,
 }) => (
-  <div className="segmented" role="radiogroup" aria-label="Difficulty">
+  <div className="difficulty-picker" role="radiogroup" aria-label="Difficulty">
     {DIFFICULTIES.map((difficulty) => (
       <button
         key={difficulty}
         role="radio"
         aria-checked={value === difficulty}
-        className={value === difficulty ? "selected" : ""}
-        disabled={disabled}
-        onClick={() => onChange(difficulty)}
-        title={`${STARTING_LIVES[difficulty]} lives`}
+        className={`difficulty-option chip-${difficulty}${
+          value === difficulty ? " selected" : ""
+        }`}
+        disabled={disabled && value !== difficulty}
+        onClick={() => !disabled && onChange(difficulty)}
       >
-        {difficulty}
+        <span className="difficulty-name">{difficulty}</span>
+        <span className="difficulty-desc">{DESCRIPTIONS[difficulty]}</span>
+        <span className="difficulty-lives">
+          {"♥".repeat(STARTING_LIVES[difficulty])}
+        </span>
       </button>
     ))}
   </div>

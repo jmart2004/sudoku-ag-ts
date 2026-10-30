@@ -1,6 +1,6 @@
 // Messages exchanged over the websocket between the client and the server.
 
-import { Difficulty } from "./sudoku";
+import { Difficulty } from "./engine";
 
 export const MAX_PLAYERS = 4;
 export const COUNTDOWN_MS = 3000;

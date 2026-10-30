@@ -1,51 +1,53 @@
 import React from "react";
-import { Link } from "react-router-dom";
-import { DIFFICULTIES } from "../shared/sudoku";
+import { DIFFICULTIES } from "../shared/engine";
 import { formatTime, getStats } from "../utility/Stats";
 
 const StatsPage: React.FC = () => {
   const stats = getStats();
   const totalWins = DIFFICULTIES.reduce((sum, d) => sum + stats.wins[d], 0);
+  const winRate = stats.races ? Math.round((totalWins / stats.races) * 100) : 0;
 
   return (
-    <div className="page home-page">
-      <h1 className="title">My Stats</h1>
-      <section className="card stats">
-        <div className="stat-row">
-          <span>Races played</span>
-          <strong>{stats.races}</strong>
+    <main className="page stats-page">
+      <h1>Your stats</h1>
+      <div className="stat-tiles">
+        <div className="stat-tile">
+          <span className="stat-number">{stats.races}</span>
+          <span className="stat-label">Races</span>
         </div>
-        <div className="stat-row">
-          <span>Races won</span>
-          <strong>{totalWins}</strong>
+        <div className="stat-tile">
+          <span className="stat-number">{totalWins}</span>
+          <span className="stat-label">Wins</span>
         </div>
-        <table className="stats-table">
-          <thead>
-            <tr>
-              <th>Difficulty</th>
-              <th>Wins</th>
-              <th>Fastest win</th>
-            </tr>
-          </thead>
-          <tbody>
-            {DIFFICULTIES.map((d) => (
-              <tr key={d}>
-                <td className="capitalize">{d}</td>
-                <td>{stats.wins[d]}</td>
-                <td>
+        <div className="stat-tile">
+          <span className="stat-number">{winRate}%</span>
+          <span className="stat-label">Win rate</span>
+        </div>
+      </div>
+      <section className="panel">
+        <h2>By difficulty</h2>
+        <div className="stat-rows">
+          {DIFFICULTIES.map((d) => (
+            <div key={d} className="stat-row">
+              <span className={`chip chip-${d}`}>{d}</span>
+              <span>
+                <strong>{stats.wins[d]}</strong>{" "}
+                <span className="muted">wins</span>
+              </span>
+              <span>
+                <span className="muted">Fastest </span>
+                <strong>
                   {stats.bestTimeMs[d] !== null
                     ? formatTime(stats.bestTimeMs[d]!)
                     : "—"}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </strong>
+              </span>
+            </div>
+          ))}
+        </div>
       </section>
-      <Link to="/" className="link">
-        Back home
-      </Link>
-    </div>
+      <p className="muted small">Stats are saved in this browser.</p>
+    </main>
   );
 };
 

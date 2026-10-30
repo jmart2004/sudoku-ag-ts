@@ -11,14 +11,12 @@ import {
   RoomView,
   SelfView,
 } from "../src/shared/protocol";
-import {
-  Difficulty,
-  DIFFICULTIES,
-  generatePuzzle,
-  STARTING_LIVES,
-} from "../src/shared/sudoku";
+import { Difficulty, DIFFICULTIES, STARTING_LIVES } from "../src/shared/engine";
+import { PuzzlePool } from "./puzzlePool";
 
-const PLAYER_COLORS = ["#e4572e", "#2e86ab", "#17a35a", "#a23b72"];
+const puzzles = new PuzzlePool();
+
+const PLAYER_COLORS = ["#f97316", "#3b82f6", "#22c55e", "#d946ef"];
 // No 0/O/1/I so codes are easy to read aloud.
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const EMPTY_ROOM_TTL_MS = 5 * 60 * 1000;
@@ -137,7 +135,7 @@ export class Room {
     if (this.phase !== "lobby") {
       throw new GameError("The game has already started.");
     }
-    const { puzzle, solution } = generatePuzzle(this.difficulty);
+    const { puzzle, solution } = puzzles.take(this.difficulty);
     this.puzzle = puzzle;
     this.solution = solution;
     this.winnerId = null;

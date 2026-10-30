@@ -7,7 +7,7 @@ import { MAX_NAME_LENGTH } from "../shared/protocol";
 import { getSavedName, saveName } from "../utility/Stats";
 import Lobby from "../components/Lobby";
 import Race from "../components/Race";
-import ErrorBanner from "../components/ErrorBanner";
+import Avatar from "../components/ui/Avatar";
 
 const RoomPage: React.FC = () => {
   const { code = "" } = useParams<{ code: string }>();
@@ -21,54 +21,62 @@ const RoomPage: React.FC = () => {
 
   if (rejoining) {
     return (
-      <div className="page center">
+      <main className="page center">
+        <div className="spinner" />
         <p className="muted">Reconnecting to lobby {upperCode}…</p>
-      </div>
+      </main>
     );
   }
 
   // Arrived from an invite link, or lost our seat: ask for a name and join.
   const trimmedName = name.trim();
   return (
-    <div className="page home-page">
-      <h1 className="title">Join lobby {upperCode}</h1>
-      <ErrorBanner />
-      {lostSeatCode === upperCode && (
-        <p className="muted">
-          Your seat in this lobby was lost. If the race is over you can join
-          again for the next one.
-        </p>
-      )}
+    <main className="page center">
       <form
-        className="card"
+        className="panel join-panel"
         onSubmit={(e) => {
           e.preventDefault();
           saveName(trimmedName);
           joinLobby(upperCode, trimmedName);
         }}
       >
+        <span className="eyebrow">You're invited to race</span>
+        <div className="lobby-code small">
+          {upperCode.split("").map((ch, i) => (
+            <span key={i}>{ch}</span>
+          ))}
+        </div>
+        {lostSeatCode === upperCode && (
+          <p className="muted">
+            Your seat in this lobby was lost. If the race is over you can join
+            again for the next one.
+          </p>
+        )}
         <label className="field">
-          <span>Your name</span>
-          <input
-            autoFocus
-            value={name}
-            maxLength={MAX_NAME_LENGTH}
-            placeholder="Enter a name"
-            onChange={(e) => setName(e.target.value)}
-          />
+          <span className="field-label">Your name</span>
+          <span className="name-input">
+            <Avatar name={trimmedName || "?"} color="var(--accent)" />
+            <input
+              autoFocus
+              value={name}
+              maxLength={MAX_NAME_LENGTH}
+              placeholder="Enter a name"
+              onChange={(e) => setName(e.target.value)}
+            />
+          </span>
         </label>
         <button
           type="submit"
-          className="btn primary"
+          className="btn primary block"
           disabled={!trimmedName || status !== "open"}
         >
           Join lobby
         </button>
+        <Link to="/" className="muted small center-text">
+          Back home
+        </Link>
       </form>
-      <Link to="/" className="link">
-        Back home
-      </Link>
-    </div>
+    </main>
   );
 };
 

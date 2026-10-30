@@ -1,6 +1,6 @@
 // Local, per-browser record of races played.
 
-import { Difficulty } from "../shared/sudoku";
+import { Difficulty } from "../shared/engine";
 
 export interface RaceStats {
   races: number;
