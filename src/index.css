@@ -44,6 +44,15 @@
   }
 }
 
+/* Short phones (iPhone SE with Safari's toolbars): size the board by height
+   so the number pad stays on screen. dvh tracks the visible area on iOS. */
+@media (max-width: 540px) and (max-height: 640px) {
+  :root {
+    --cell: calc((100vh - 290px) / 9);
+    --cell: calc((100dvh - 290px) / 9);
+  }
+}
+
 /* Keep the number pad on screen on shorter laptops. */
 @media (min-width: 540px) and (max-height: 960px) {
   :root {
@@ -158,6 +167,9 @@ a {
 button {
   font: inherit;
   color: inherit;
+  /* No grey flash on tap, and no double-tap zoom when tapping quickly. */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 input {
@@ -1350,9 +1362,92 @@ input:focus {
   text-align: center;
 }
 
-@media (hover: none) {
+@media (hover: none), (pointer: coarse) {
   .hint {
     display: none;
+  }
+}
+
+/* Phones: give the race the whole screen so the board and pad fit. */
+@media (max-width: 540px) {
+  .shell:has(.race) .topbar {
+    display: none;
+  }
+  .race {
+    padding: 10px 16px 24px;
+    gap: 10px;
+  }
+  .race-bar .icon-btn {
+    width: 34px;
+    height: 34px;
+  }
+  .race-timer {
+    font-size: 1.15rem;
+  }
+  .track {
+    padding: 6px 10px;
+    gap: 0;
+  }
+  .lane {
+    grid-template-columns: 52px 1fr 30px;
+    gap: 8px;
+    height: 24px;
+  }
+  .lane .avatar-sm {
+    width: 20px;
+    height: 20px;
+    font-size: 0.65rem;
+  }
+  .tool {
+    flex-direction: row;
+    gap: 6px;
+    padding: 4px 10px;
+  }
+  .tool svg {
+    font-size: 1rem;
+  }
+  .tool-icon {
+    display: contents;
+  }
+  .tool-badge {
+    position: static;
+    order: 3;
+  }
+  .pad-key {
+    padding: 6px 0 4px;
+  }
+  /* Names are on the track already; keep rival cards readable when narrow. */
+  .rivals .opponent {
+    padding: 8px;
+  }
+  .opponent-name {
+    display: none;
+  }
+  .opponent-percent {
+    margin-left: auto;
+  }
+}
+
+/* Hover styles stick after a tap on touch screens; only use them with a mouse. */
+@media (hover: none) {
+  .pad-key:hover,
+  .btn:hover:not(:disabled),
+  .icon-btn:hover,
+  .difficulty-option:hover:not(:disabled) {
+    border-color: var(--border);
+  }
+  .tool:hover:not(:disabled) {
+    background: none;
+    color: var(--muted);
+  }
+  .tool.on:hover {
+    color: var(--accent);
+  }
+  .difficulty-option.selected:hover {
+    border-color: var(--chip);
+  }
+  .pad-key.active:hover {
+    border-color: var(--accent);
   }
 }
 

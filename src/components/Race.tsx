@@ -49,7 +49,11 @@ const Race: React.FC = () => {
 
   // Fresh notes and selection for each new race.
   const raceId = room ? `${room.code}-${room.startAt}` : "";
-  useEffect(() => dispatch({ type: "reset" }), [raceId]);
+  useEffect(() => {
+    dispatch({ type: "reset" });
+    // The host taps Start at the bottom of the lobby; open the race at the top.
+    window.scrollTo(0, 0);
+  }, [raceId]);
 
   useEffect(() => {
     if (phase === "finished") return;

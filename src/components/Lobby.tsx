@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -17,6 +17,10 @@ const Lobby: React.FC = () => {
   const { room, self, setDifficulty, startRace, leaveLobby } = useGame();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
+  // Coming back from a race's results, start at the lobby code.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   if (!room || !self) return null;
 
   const isHost = room.hostId === self.playerId;
