@@ -11,12 +11,15 @@ interface DifficultyPickerProps {
   value: Difficulty;
   onChange: (difficulty: Difficulty) => void;
   disabled?: boolean;
+  // Lives only apply in race mode.
+  showLives?: boolean;
 }
 
 const DifficultyPicker: React.FC<DifficultyPickerProps> = ({
   value,
   onChange,
   disabled,
+  showLives = true,
 }) => (
   <div className="difficulty-picker" role="radiogroup" aria-label="Difficulty">
     {DIFFICULTIES.map((difficulty) => (
@@ -32,9 +35,11 @@ const DifficultyPicker: React.FC<DifficultyPickerProps> = ({
       >
         <span className="difficulty-name">{difficulty}</span>
         <span className="difficulty-desc">{DESCRIPTIONS[difficulty]}</span>
-        <span className="difficulty-lives">
-          {"♥".repeat(STARTING_LIVES[difficulty])}
-        </span>
+        {showLives && (
+          <span className="difficulty-lives">
+            {"♥".repeat(STARTING_LIVES[difficulty])}
+          </span>
+        )}
       </button>
     ))}
   </div>

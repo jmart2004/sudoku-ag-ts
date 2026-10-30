@@ -11,10 +11,12 @@ import {
 import { useGame } from "../game/GameContext";
 import { MAX_PLAYERS } from "../shared/protocol";
 import DifficultyPicker from "./DifficultyPicker";
+import ModePicker from "./ModePicker";
 import Avatar from "./ui/Avatar";
 
 const Lobby: React.FC = () => {
-  const { room, self, setDifficulty, startRace, leaveLobby } = useGame();
+  const { room, self, setDifficulty, setMode, startRace, leaveLobby } =
+    useGame();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   // Coming back from a race's results, start at the lobby code.
@@ -92,6 +94,19 @@ const Lobby: React.FC = () => {
 
       <section className="panel">
         <div className="panel-head">
+          <h2>Game mode</h2>
+          {!isHost && <span className="muted">Chosen by {host?.name}</span>}
+        </div>
+        <ModePicker
+          mode={room.mode}
+          durationMs={room.durationMs}
+          onChange={setMode}
+          disabled={!isHost}
+        />
+      </section>
+
+      <section className="panel">
+        <div className="panel-head">
           <h2>Difficulty</h2>
           {!isHost && <span className="muted">Chosen by {host?.name}</span>}
         </div>
@@ -99,6 +114,7 @@ const Lobby: React.FC = () => {
           value={room.difficulty}
           onChange={setDifficulty}
           disabled={!isHost}
+          showLives={room.mode === "race"}
         />
       </section>
 
@@ -106,7 +122,11 @@ const Lobby: React.FC = () => {
         {isHost ? (
           <button className="btn primary big block" onClick={startRace}>
             <FontAwesomeIcon icon={faPlay} />
-            {room.players.length === 1 ? "Start solo practice" : "Start race"}
+            {room.mode === "timed"
+              ? `Start ${room.durationMs / 60000}-minute time attack`
+              : room.players.length === 1
+              ? "Start solo practice"
+              : "Start race"}
           </button>
         ) : (
           <div className="waiting">

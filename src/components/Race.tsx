@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowLeft,
+  faCheck,
   faEraser,
   faHeart,
   faPencil,
@@ -16,7 +17,7 @@ import {
   initialBoardState,
   planInput,
 } from "../game/boardReducer";
-import { formatTime, recordRace } from "../utility/Stats";
+import { formatTime, recordRace, recordTimedRun } from "../utility/Stats";
 import { STARTING_LIVES } from "../shared/engine";
 import Board from "./Board";
 import NumberPad from "./NumberPad";
@@ -26,6 +27,9 @@ import Countdown from "./Countdown";
 import Results from "./Results";
 
 const FEEDBACK_MS = 800;
+const BOARD_DONE_MS = 1200;
+// The timed-mode clock turns urgent for the last stretch.
+const FINAL_STRETCH_MS = 30 * 1000;
 const ARROWS: Record<string, [number, number]> = {
   ArrowUp: [-1, 0],
   ArrowDown: [1, 0],
@@ -39,21 +43,37 @@ const Race: React.FC = () => {
   const navigate = useNavigate();
   const [state, dispatch] = useReducer(boardReducer, undefined, initialBoardState);
   const [now, setNow] = useState(() => Date.now() + clockOffset);
+  const [boardDone, setBoardDone] = useState<number | null>(null);
   const boardRef = useRef<number[]>([]);
 
   const board = self?.board ?? null;
   boardRef.current = board ?? [];
   const me = room?.players.find((p) => p.id === self?.playerId);
   const phase = room?.phase;
-  const canPlay = phase === "playing" && !!me && !me.eliminated && !!board;
+  const timed = room?.mode === "timed";
+  const locked = !!self?.lockedUntil && self.lockedUntil > now;
+  const canPlay =
+    phase === "playing" && !!me && !me.eliminated && !!board && !locked;
 
-  // Fresh notes and selection for each new race.
   const raceId = room ? `${room.code}-${room.startAt}` : "";
   useEffect(() => {
-    dispatch({ type: "reset" });
     // The host taps Start at the bottom of the lobby; open the race at the top.
     window.scrollTo(0, 0);
   }, [raceId]);
+
+  // Fresh notes and selection for each new board (timed mode deals several).
+  const boardNumber = me?.boardsCompleted ?? 0;
+  const boardKey = timed ? boardNumber : 0;
+  useEffect(() => {
+    dispatch({ type: "reset" });
+  }, [raceId, boardKey]);
+
+  // Celebrate each finished board in timed mode.
+  useEffect(() => {
+    if (!boardDone) return;
+    const timer = window.setTimeout(() => setBoardDone(null), BOARD_DONE_MS);
+    return () => window.clearTimeout(timer);
+  }, [boardDone]);
 
   useEffect(() => {
     if (phase === "finished") return;
@@ -75,20 +95,35 @@ const Race: React.FC = () => {
 
   useEffect(
     () =>
-      onGuessResult((result) =>
-        dispatch({ type: "guessResult", ...result, board: boardRef.current })
-      ),
-    [onGuessResult]
+      onGuessResult((result) => {
+        if (result.completedBoard && timed) {
+          // A new board is on its way; skip the animations for the old one.
+          setBoardDone((n) => (n ?? 0) + 1);
+          return;
+        }
+        dispatch({ type: "guessResult", ...result, board: boardRef.current });
+      }),
+    [onGuessResult, timed]
   );
 
   // Save the result to this browser's stats once the race ends.
   useEffect(() => {
     if (phase !== "finished" || !room || !me) return;
-    recordRace(
-      raceId,
-      room.difficulty,
-      room.winnerId === me.id ? me.finishedMs : null
-    );
+    if (room.mode === "timed") {
+      recordTimedRun(
+        raceId,
+        room.difficulty,
+        room.durationMs,
+        me.boardsCompleted,
+        room.winnerId === me.id && room.players.length > 1
+      );
+    } else {
+      recordRace(
+        raceId,
+        room.difficulty,
+        room.winnerId === me.id ? me.finishedMs : null
+      );
+    }
   }, [phase, raceId, room, me]);
 
   const select = useCallback(
@@ -144,15 +179,23 @@ const Race: React.FC = () => {
 
   if (!room || !self || !me) return null;
 
-  const puzzle = room.puzzle;
-  const toFill = puzzle ? puzzle.filter((v) => v === 0).length : 0;
+  const puzzle = self.puzzle;
   const winner = room.players.find((p) => p.id === room.winnerId);
-  const elapsed =
-    phase === "finished"
-      ? winner?.finishedMs ?? null
-      : room.startAt && phase === "playing"
-      ? now - room.startAt
-      : 0;
+  // Race mode counts up; timed mode counts down to the end.
+  const clock = timed
+    ? phase === "finished"
+      ? 0
+      : phase === "playing" && room.endsAt
+      ? Math.max(0, room.endsAt - now)
+      : room.durationMs
+    : phase === "finished"
+    ? winner?.finishedMs ?? null
+    : room.startAt && phase === "playing"
+    ? now - room.startAt
+    : 0;
+  const finalStretch =
+    timed && phase === "playing" && clock !== null && clock <= FINAL_STRETCH_MS;
+  const lockSeconds = locked ? Math.ceil((self.lockedUntil! - now) / 1000) : 0;
   const countdown =
     phase === "countdown" && room.startAt
       ? Math.max(1, Math.ceil((room.startAt - now) / 1000))
@@ -176,23 +219,36 @@ const Race: React.FC = () => {
           <FontAwesomeIcon icon={faArrowLeft} />
         </button>
         <span className={`chip chip-${room.difficulty}`}>{room.difficulty}</span>
-        <span className="race-timer">
-          {elapsed !== null ? formatTime(elapsed) : "—"}
+        <span
+          className={`race-timer${finalStretch ? " urgent" : ""}`}
+          aria-label={timed ? "Time left" : "Time elapsed"}
+        >
+          {clock !== null ? formatTime(timed ? clock + 999 : clock) : "—"}
         </span>
-        <span className="hearts" aria-label={`${me.lives} lives left`}>
-          {Array.from({ length: maxLives }, (_, i) => (
-            <FontAwesomeIcon
-              key={i}
-              icon={faHeart}
-              className={i < me.lives ? "heart" : "heart lost"}
-            />
-          ))}
-        </span>
+        {timed ? (
+          <span className="board-count" aria-label={`${boardNumber} boards done`}>
+            <FontAwesomeIcon icon={faCheck} />
+            {boardNumber}
+            <span className="board-count-label">
+              {boardNumber === 1 ? "board" : "boards"}
+            </span>
+          </span>
+        ) : (
+          <span className="hearts" aria-label={`${me.lives} lives left`}>
+            {Array.from({ length: maxLives }, (_, i) => (
+              <FontAwesomeIcon
+                key={i}
+                icon={faHeart}
+                className={i < me.lives ? "heart" : "heart lost"}
+              />
+            ))}
+          </span>
+        )}
       </header>
 
       <RaceTrack
         players={room.players}
-        toFill={toFill}
+        timed={timed}
         selfId={me.id}
         winnerId={room.winnerId}
       />
@@ -212,6 +268,19 @@ const Race: React.FC = () => {
               <div className="board board-placeholder" />
             )}
             {countdown !== null && <Countdown seconds={countdown} />}
+            {locked && phase === "playing" && (
+              <div className="board-overlay locked">
+                <strong>{lockSeconds}</strong>
+                <span>Wrong number, locked for a moment</span>
+              </div>
+            )}
+            {boardDone && (
+              <div key={boardDone} className="board-overlay board-done">
+                <FontAwesomeIcon icon={faCheck} className="board-done-icon" />
+                <strong>Board {boardNumber} done!</strong>
+                <span>Next one…</span>
+              </div>
+            )}
             {me.eliminated && phase === "playing" && (
               <div className="board-overlay out">
                 <strong>Out of lives</strong>
@@ -264,7 +333,7 @@ const Race: React.FC = () => {
           <aside className="rivals">
             <h3>Rivals</h3>
             {opponents.map((player) => (
-              <OpponentBoard key={player.id} player={player} puzzle={puzzle} />
+              <OpponentBoard key={player.id} player={player} timed={timed} />
             ))}
           </aside>
         )}

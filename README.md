@@ -4,16 +4,22 @@ A multiplayer sudoku race. Create a lobby, share the 4-letter code (or invite
 link) with up to 3 friends, and everyone gets the **identical** board. The
 first player to correctly fill every cell wins.
 
-- **Lobbies of 1–4 players.** The host picks the difficulty and starts the race; a
-  lobby of one works as solo practice.
+- **Lobbies of 1–4 players.** The host picks the mode and difficulty and starts
+  the game; a lobby of one works as solo practice.
+- **Two modes:**
+  - **Race:** first to finish the board wins.
+  - **Time attack:** whoever completes the most boards in 3, 5 or 10 minutes
+    wins. Everyone gets the same boards in the same order, and finishing one
+    deals the next. Instead of costing a life, a wrong number locks your board
+    for 3 seconds.
 - **Fair, properly graded boards.** Every puzzle has exactly one solution, so
   no valid answer is ever marked wrong. Difficulty comes from the techniques
   the puzzle needs, not just how many clues it has: easy needs only singles,
   medium needs locked candidates, and hard needs pairs, triples or an X-wing.
   No puzzle ever needs guessing.
 - **Server-judged moves.** The solution never leaves the server. Each guess is
-  checked there. A wrong number costs a life, and a player who runs out of
-  lives is out of the race.
+  checked there. In a race, a wrong number costs a life, and a player who runs
+  out of lives is out.
 - **Live race view.** A race track shows every player's progress and lives.
   Each rival also gets a mini-board showing which cells they've filled, but
   never their numbers. Announcements pop up when someone reaches halfway, is

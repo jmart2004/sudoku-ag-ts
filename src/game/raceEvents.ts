@@ -1,6 +1,6 @@
 // Turns successive room snapshots into short announcements for toasts.
 
-import { RoomView } from "../shared/protocol";
+import { PlayerView, RoomView } from "../shared/protocol";
 
 export type EventTone = "info" | "good" | "bad";
 
@@ -12,9 +12,9 @@ export interface RaceEvent {
 
 const MILESTONES = [50, 90];
 
-const percentDone = (room: RoomView, filled: number) => {
-  const toFill = room.puzzle?.filter((v) => v === 0).length ?? 0;
-  return toFill ? (filled / toFill) * 100 : 0;
+const percentDone = (player: PlayerView) => {
+  const toFill = 81 - player.givens.length;
+  return toFill ? (player.filled.length / toFill) * 100 : 0;
 };
 
 export function diffRoom(
@@ -47,9 +47,18 @@ export function diffRoom(
         color,
       });
     }
-    if (!you && next.phase === "playing" && prev.phase === "playing") {
-      const was = percentDone(prev, old.filled.length);
-      const now = percentDone(next, player.filled.length);
+    const bothPlaying = next.phase === "playing" && prev.phase === "playing";
+    if (!you && bothPlaying && next.mode === "timed") {
+      if (player.boardsCompleted > old.boardsCompleted) {
+        events.push({
+          text: `${player.name} finished board ${player.boardsCompleted}`,
+          tone: "info",
+          color,
+        });
+      }
+    } else if (!you && bothPlaying) {
+      const was = percentDone(old);
+      const now = percentDone(player);
       const milestone = MILESTONES.filter((m) => was < m && now >= m).pop();
       if (milestone === 50) {
         events.push({ text: `${player.name} is halfway there`, tone: "info", color });

@@ -7,14 +7,15 @@ import Avatar from "./ui/Avatar";
 
 interface OpponentBoardProps {
   player: PlayerView;
-  puzzle: number[];
+  timed: boolean;
 }
 
 const BOXES = UNITS.slice(18);
 
-const OpponentBoard: React.FC<OpponentBoardProps> = ({ player, puzzle }) => {
+const OpponentBoard: React.FC<OpponentBoardProps> = ({ player, timed }) => {
   const filled = new Set(player.filled);
-  const toFill = puzzle.filter((v) => v === 0).length;
+  const givens = new Set(player.givens);
+  const toFill = 81 - givens.size;
   const percent = toFill ? Math.round((player.filled.length / toFill) * 100) : 0;
 
   return (
@@ -28,6 +29,11 @@ const OpponentBoard: React.FC<OpponentBoardProps> = ({ player, puzzle }) => {
         <span className="opponent-percent">
           {player.eliminated ? "Out" : `${percent}%`}
         </span>
+        {timed && (
+          <span className="opponent-boards" title="Boards completed">
+            {player.boardsCompleted}✓
+          </span>
+        )}
       </div>
       <div className="mini-board" aria-hidden>
         {BOXES.map((cells, b) => (
@@ -35,7 +41,9 @@ const OpponentBoard: React.FC<OpponentBoardProps> = ({ player, puzzle }) => {
             {cells.map((cell) => (
               <span
                 key={cell}
-                className={puzzle[cell] ? "given" : filled.has(cell) ? "filled" : ""}
+                className={
+                  givens.has(cell) ? "given" : filled.has(cell) ? "filled" : ""
+                }
               />
             ))}
           </div>

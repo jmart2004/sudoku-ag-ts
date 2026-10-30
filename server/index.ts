@@ -141,16 +141,24 @@ function handle(conn: Connection, msg: ClientMessage) {
     case "setDifficulty":
       room.setDifficulty(playerId, msg.difficulty);
       break;
+    case "setMode":
+      room.setMode(playerId, msg.mode, msg.durationMs);
+      break;
     case "start":
       room.start(playerId, () => broadcast(room));
       break;
     case "guess": {
-      const correct = room.guess(playerId, msg.cell, msg.value);
+      const { correct, completedBoard } = room.guess(
+        playerId,
+        msg.cell,
+        msg.value
+      );
       send(conn.socket, {
         type: "guessResult",
         cell: msg.cell,
         value: msg.value,
         correct,
+        completedBoard,
       });
       break;
     }

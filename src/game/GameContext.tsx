@@ -11,6 +11,7 @@ import React, {
 } from "react";
 import {
   ClientMessage,
+  GameMode,
   RoomView,
   SelfView,
   ServerMessage,
@@ -27,6 +28,7 @@ export interface GuessResult {
   cell: number;
   value: number;
   correct: boolean;
+  completedBoard?: boolean;
 }
 
 type Status = "connecting" | "open" | "closed";
@@ -47,6 +49,7 @@ interface GameContextProps {
   joinLobby: (code: string, name: string) => void;
   leaveLobby: () => void;
   setDifficulty: (difficulty: Difficulty) => void;
+  setMode: (mode: GameMode, durationMs: number) => void;
   startRace: () => void;
   guess: (cell: number, value: number) => void;
   backToLobby: () => void;
@@ -225,6 +228,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({
         send({ type: "join", code: code.trim().toUpperCase(), name }),
       leaveLobby,
       setDifficulty: (difficulty) => send({ type: "setDifficulty", difficulty }),
+      setMode: (mode, durationMs) => send({ type: "setMode", mode, durationMs }),
       startRace: () => send({ type: "start" }),
       guess: (cell, value) => send({ type: "guess", cell, value }),
       backToLobby: () => send({ type: "backToLobby" }),

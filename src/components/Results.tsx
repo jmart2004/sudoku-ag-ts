@@ -9,13 +9,15 @@ import Confetti from "./Confetti";
 
 const PLACES = ["1st", "2nd", "3rd", "4th"];
 
+const boardsLabel = (n: number) => `${n} board${n === 1 ? "" : "s"}`;
+
 const Results: React.FC = () => {
   const { room, self, backToLobby, leaveLobby } = useGame();
   const navigate = useNavigate();
   const [hidden, setHidden] = useState(false);
-  if (!room || !self || !room.standings || !room.puzzle) return null;
+  if (!room || !self || !room.standings) return null;
 
-  const toFill = room.puzzle.filter((v) => v === 0).length;
+  const timed = room.mode === "timed";
   const isHost = room.hostId === self.playerId;
   const youWon = room.winnerId === self.playerId;
   const winner = room.players.find((p) => p.id === room.winnerId);
@@ -42,9 +44,18 @@ const Results: React.FC = () => {
               </div>
               <h2>{youWon ? "You won!" : `${winner.name} wins`}</h2>
               <p className="muted">
-                Solved in {formatTime(winner.finishedMs ?? 0)}
+                {timed
+                  ? `Time's up · ${boardsLabel(winner.boardsCompleted)} in ${formatTime(
+                      room.durationMs
+                    )}`
+                  : `Solved in ${formatTime(winner.finishedMs ?? 0)}`}
                 {!youWon && yourPlace >= 0 && ` · you placed ${PLACES[yourPlace]}`}
               </p>
+            </>
+          ) : timed ? (
+            <>
+              <h2>Time's up</h2>
+              <p className="muted">Nobody filled in a single cell.</p>
             </>
           ) : (
             <>
@@ -58,7 +69,10 @@ const Results: React.FC = () => {
           {room.standings.map((id, index) => {
             const player = room.players.find((p) => p.id === id);
             if (!player) return null;
-            const percent = Math.round((player.filled.length / toFill) * 100);
+            const toFill = 81 - player.givens.length;
+            const percent = toFill
+              ? Math.round((player.filled.length / toFill) * 100)
+              : 0;
             return (
               <li
                 key={id}
@@ -75,7 +89,12 @@ const Results: React.FC = () => {
                   <span style={{ width: `${percent}%` }} />
                 </span>
                 <span className="standing-meta">
-                  {player.eliminated ? "out" : `${percent}%`}
+                  {timed && (
+                    <strong className="standing-boards">
+                      {boardsLabel(player.boardsCompleted)}
+                    </strong>
+                  )}
+                  {timed ? ` + ${percent}%` : player.eliminated ? "out" : `${percent}%`}
                   {" · "}
                   {player.mistakes}✗
                 </span>
