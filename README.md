@@ -65,9 +65,18 @@ npm run serve
 
 This builds the app and serves both the site and the websocket from one Node
 process on `$PORT` (default 3000). It needs a host that runs Node and supports
-websockets, such as Render, Fly.io or Railway. A static host like GitHub Pages
-won't work. To point the client at a game server somewhere else, set
-`REACT_APP_WS_URL` (for example `wss://example.com/ws`) at build time.
+websockets. A static host like GitHub Pages won't work. To point the client at
+a game server somewhere else, set `REACT_APP_WS_URL` (for example
+`wss://example.com/ws`) at build time.
+
+### Free hosting on Render
+
+The repo includes a `render.yaml` blueprint. In Render, choose **New →
+Blueprint**, pick this repository, and confirm. You get an
+`https://sudoku-race-….onrender.com` link to share. On the free plan the
+service sleeps after 15 minutes without visitors, and the first visit after
+that takes about a minute to wake it. Lobbies are kept in memory, so a sleep or
+restart ends any game in progress.
 
 ## Project layout
 
