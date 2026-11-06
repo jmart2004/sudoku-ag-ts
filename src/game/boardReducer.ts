@@ -29,6 +29,8 @@ export interface BoardState {
   // Cell just filled correctly, and any row/column/box it completed.
   justFilled: number | null;
   completed: number[];
+  // A number whose every copy was just placed, for the board to shimmer.
+  completedDigit: number | null;
   // Bumped on every feedback event so animations replay.
   feedbackId: number;
 }
@@ -41,6 +43,10 @@ export type BoardAction =
   | { type: "toggleNoteMode" }
   | { type: "toggleNote"; digit: number }
   | { type: "clearNotes" }
+  // Select a cell without the click-again-to-deselect toggle.
+  | { type: "focus"; cell: number; board: number[] }
+  // Replace a cell's notes in one undoable step.
+  | { type: "setNotes"; cell: number; mask: number }
   | { type: "undo" }
   | { type: "highlight"; digit: number }
   | { type: "guessSent"; cell: number; value: number }
@@ -51,16 +57,20 @@ export type BoardAction =
       correct: boolean;
       board: number[];
     }
-  | { type: "clearFeedback" };
+  // Clears feedback only if nothing newer has arrived since.
+  | { type: "clearFeedback"; feedbackId: number };
 
 export interface Completion {
   kinds: CompletionKind[];
   // Every cell in the completed lines and regions.
   cells: number[];
+  // The number whose every copy is now placed, if this move did that.
+  digit: number | null;
 }
 
 // What filling `cell` completed on `board` (which already includes the
-// move): its row, column, region and, if it lies on one, a diagonal.
+// move): its row, column, region, a diagonal it lies on, and its number
+// (when every copy of that number is now placed).
 // Diagonals aren't a sudoku rule, but filling one is still worth a cheer.
 export function completionOf(
   geometry: Geometry,
@@ -83,10 +93,19 @@ export function completionOf(
     if (diagonal.includes(cell)) found.push(["diagonal", diagonal]);
   }
   const done = found.filter(([, cells]) => full(cells));
+  const value = board[cell];
+  const digitDone =
+    value !== 0 && board.filter((v) => v === value).length === size;
   return {
     // Both diagonals at once (the centre cell) still count as one sound.
-    kinds: Array.from(new Set(done.map(([kind]) => kind))),
+    kinds: Array.from(
+      new Set([
+        ...done.map(([kind]) => kind),
+        ...(digitDone ? (["digit"] as const) : []),
+      ])
+    ),
     cells: Array.from(new Set(done.flatMap(([, cells]) => cells))),
+    digit: digitDone ? value : null,
   };
 }
 
@@ -103,6 +122,7 @@ export const initialBoardState = (
   wrong: null,
   justFilled: null,
   completed: [],
+  completedDigit: null,
   feedbackId: 0,
 });
 
@@ -179,6 +199,16 @@ export function boardReducer(
       return withNotes(state, notes);
     }
 
+    case "focus":
+      return selectCell(state, action.cell, action.board);
+
+    case "setNotes": {
+      if (state.notes[action.cell] === action.mask) return state;
+      const notes = [...state.notes];
+      notes[action.cell] = action.mask;
+      return withNotes(state, notes);
+    }
+
     case "undo": {
       if (!state.history.length) return state;
       return {
@@ -226,6 +256,7 @@ export function boardReducer(
       const notes = [...state.notes];
       notes[cell] = 0;
       for (const peer of state.geometry.peers[cell]) notes[peer] &= ~bit(value);
+      const done = completionOf(state.geometry, filled, cell);
       return {
         ...state,
         pending,
@@ -233,12 +264,20 @@ export function boardReducer(
         feedbackId,
         highlight: value,
         justFilled: cell,
-        completed: completionOf(state.geometry, filled, cell).cells,
+        completed: done.cells,
+        completedDigit: done.digit,
         wrong: null,
       };
     }
 
     case "clearFeedback":
-      return { ...state, wrong: null, justFilled: null, completed: [] };
+      if (action.feedbackId !== state.feedbackId) return state;
+      return {
+        ...state,
+        wrong: null,
+        justFilled: null,
+        completed: [],
+        completedDigit: null,
+      };
   }
 }

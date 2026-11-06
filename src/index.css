@@ -27,6 +27,9 @@
   --wrong-bg: #fee2e2;
   --wrong: #dc2626;
   --heart: #f43f5e;
+  --gold: #eab308;
+  --gold-bg: #fef3c7;
+  --gold-text: #a16207;
 
   --easy: #16a34a;
   --medium: #d97706;
@@ -65,6 +68,9 @@
 
 :root[data-theme="dark"] {
   --bg: #0b0f1a;
+  --gold: #facc15;
+  --gold-bg: #3d3209;
+  --gold-text: #fde047;
   --bg-glow: rgba(129, 140, 248, 0.12);
   --surface: #121829;
   --surface-2: #1a2236;
@@ -97,6 +103,9 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0b0f1a;
+    --gold: #facc15;
+    --gold-bg: #3d3209;
+    --gold-text: #fde047;
     --bg-glow: rgba(129, 140, 248, 0.12);
     --surface: #121829;
     --surface-2: #1a2236;
@@ -1152,6 +1161,15 @@ input:focus {
   animation: wave 0.7s ease-out var(--wave-delay, 0ms) both;
 }
 
+/* Every copy of a just-completed number shines gold. */
+.cell.digit-done {
+  animation: shine 1.1s ease-out var(--shine-delay, 0ms) both;
+}
+
+.cell.digit-done .cell-value {
+  animation: shine-text 1.1s ease-out var(--shine-delay, 0ms) both;
+}
+
 .cell.wrong,
 .cell.conflict {
   background: var(--wrong-bg);
@@ -1538,6 +1556,243 @@ input:focus {
 .mini-board span.filled {
   background: var(--player);
   animation: pop 0.3s ease-out;
+}
+
+/* Settings panel (gear icon) */
+
+.modal.settings {
+  max-width: 460px;
+  gap: 18px;
+  text-align: left;
+}
+
+.settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.settings-head h2 {
+  font-size: 1.3rem;
+  letter-spacing: -0.02em;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.settings-section-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* The race bar's gear is for phones, where the top bar is hidden in a race. */
+.race-settings {
+  display: none;
+}
+
+@media (max-width: 540px) {
+  .race-settings {
+    display: inline-flex;
+  }
+}
+
+/* Settings rows */
+
+.option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+}
+
+.option-row.readonly {
+  cursor: default;
+}
+
+.option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.switch {
+  appearance: none;
+  -webkit-appearance: none;
+  flex-shrink: 0;
+  width: 46px;
+  height: 26px;
+  padding: 0;
+  border-radius: 999px;
+  border: none;
+  background: var(--border);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s;
+}
+
+.switch:checked {
+  background: var(--accent);
+}
+
+.switch:checked::after {
+  transform: translateX(20px);
+}
+
+.switch:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.switch:focus {
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+/* Cell inspector (right-click / long-press) */
+
+.cell {
+  /* No iOS copy/lookup callout on long-press. */
+  -webkit-touch-callout: none;
+}
+
+.inspector {
+  position: fixed;
+  z-index: 35;
+  width: 268px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: rise 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.inspector-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.inspector-close {
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.inspector-fits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fit-digit {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1.5px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--entered);
+  font-size: 1.3rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s, background 0.15s;
+}
+
+.fit-digit:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.fit-digit:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.fit-digit:disabled {
+  cursor: default;
+}
+
+.inspector-none {
+  font-size: 0.85rem;
+  color: var(--wrong);
+  font-weight: 600;
+}
+
+.inspector-lines {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 6px 10px;
+  margin: -4px 0 0;
+}
+
+.inspector-lines dt {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.inspector-lines dd {
+  margin: 0;
+}
+
+.inspect-digits {
+  display: flex;
+  gap: 3px;
+}
+
+.inspect-digits span {
+  width: 17px;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.inspect-digits .missing {
+  color: var(--entered);
+  background: var(--accent-soft);
+}
+
+.inspect-digits .present {
+  color: var(--border);
+}
+
+.inspect-complete {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--easy);
+}
+
+/* Separate the "Still needed" lines from the digits that fit above them. */
+.inspector-fits + .eyebrow,
+.inspector-none + .eyebrow {
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
 }
 
 /* Stats size tabs */
@@ -2108,6 +2363,27 @@ input:focus {
   }
   100% {
     background: var(--cell-bg);
+  }
+}
+
+@keyframes shine {
+  0% {
+    background: var(--cell-bg);
+  }
+  25% {
+    background: var(--gold-bg);
+    box-shadow: inset 0 0 0 2px var(--gold);
+  }
+  100% {
+    background: var(--cell-bg);
+    box-shadow: inset 0 0 0 0 transparent;
+  }
+}
+
+@keyframes shine-text {
+  25% {
+    color: var(--gold-text);
+    transform: scale(1.18);
   }
 }
 

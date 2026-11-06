@@ -5,6 +5,7 @@ import {
   initialBoardState,
   planInput,
 } from "./boardReducer";
+import { missingDigits } from "../components/CellInspector";
 
 const { puzzle, solution } = generatePuzzle(9, "easy");
 const emptyCell = puzzle.indexOf(0);
@@ -159,9 +160,10 @@ test("a wrong guess points at the clashing cells", () => {
 test("completionOf names everything a move completes, diagonals included", () => {
   const geometry = geometryFor(generatePuzzle(9, "easy").regions);
   const board = [...solution];
-  // The centre cell lies on its row, column, box and both diagonals.
+  // The centre cell lies on its row, column, box and both diagonals, and on
+  // a full board its number is complete too.
   expect(completionOf(geometry, board, 40).kinds.sort()).toEqual(
-    ["column", "diagonal", "region", "row"]
+    ["column", "diagonal", "digit", "region", "row"]
   );
   // An edge cell that's on no diagonal.
   expect(completionOf(geometry, board, 1).kinds).not.toContain("diagonal");
@@ -173,4 +175,71 @@ test("completionOf names everything a move completes, diagonals included", () =>
   gappy[72] = 0;
   gappy[40] = 0;
   expect(completionOf(geometry, gappy, 40).kinds).toEqual([]);
+});
+
+test("missingDigits lists what fits a cell and what its lines and box need", () => {
+  // Row 0 of this 4×4 is 1 _ _ 4; column 1 holds 2 and 3; box 0 holds 1 and 2.
+  const geometry = geometryFor([0, 0, 1, 1, 0, 0, 1, 1, 2, 2, 3, 3, 2, 2, 3, 3]);
+  const board = [1, 0, 0, 4, 0, 2, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0];
+  const result = missingDigits(geometry, board, 1);
+  expect(result.row).toEqual([2, 3]);
+  expect(result.column).toEqual([1, 4]);
+  expect(result.region).toEqual([3, 4]);
+  // Nothing is missing from all three at once: the row needs 2 and 3, and the
+  // column already has both.
+  expect(result.fits).toEqual([]);
+  expect(missingDigits(geometry, board, 2).fits).toEqual([2, 3]);
+  // A filled cell has nothing that fits, but still shows its lines.
+  expect(missingDigits(geometry, board, 0).fits).toEqual([]);
+});
+
+test("setNotes replaces a cell's notes in one undoable step; focus never deselects", () => {
+  let state = boardReducer(initialBoardState(), {
+    type: "focus",
+    cell: emptyCell,
+    board: puzzle,
+  });
+  state = boardReducer(state, { type: "focus", cell: emptyCell, board: puzzle });
+  expect(state.selected).toBe(emptyCell);
+  state = boardReducer(state, { type: "setNotes", cell: emptyCell, mask: bit(2) | bit(7) });
+  expect(state.notes[emptyCell]).toBe(bit(2) | bit(7));
+  state = boardReducer(state, { type: "undo" });
+  expect(state.notes[emptyCell]).toBe(0);
+});
+
+test("completionOf reports a number once every copy of it is placed", () => {
+  const geometry = geometryFor(generatePuzzle(9, "easy").regions);
+  const board = [...solution];
+  const sevens = board.flatMap((v, c) => (v === 7 ? [c] : []));
+  // With one 7 missing, placing it completes the number.
+  const last = sevens[4];
+  expect(completionOf(geometry, board, last).digit).toBe(7);
+  expect(completionOf(geometry, board, last).kinds).toContain("digit");
+  // With two missing, placing one of them doesn't.
+  board[sevens[0]] = 0;
+  expect(completionOf(geometry, board, last).digit).toBeNull();
+  expect(completionOf(geometry, board, last).kinds).not.toContain("digit");
+});
+
+test("a stale clearFeedback leaves newer feedback alone", () => {
+  let state = boardReducer(initialBoardState(), {
+    type: "guessResult",
+    cell: emptyCell,
+    value: solution[emptyCell],
+    correct: true,
+    board: puzzle,
+  });
+  const first = state.feedbackId;
+  state = boardReducer(state, {
+    type: "guessResult",
+    cell: emptyCell,
+    value: 9,
+    correct: false,
+    board: puzzle,
+  });
+  // The first move's timer fires late: the wrong-guess shake must survive.
+  state = boardReducer(state, { type: "clearFeedback", feedbackId: first });
+  expect(state.wrong).not.toBeNull();
+  state = boardReducer(state, { type: "clearFeedback", feedbackId: state.feedbackId });
+  expect(state.wrong).toBeNull();
 });

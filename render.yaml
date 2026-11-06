@@ -1,0 +1,13 @@
+# Render Blueprint: one free web service that serves the site and the game's
+# websocket. In Render: New → Blueprint → pick this repository.
+services:
+  - type: web
+    name: sudoku-race
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm run server
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "22"

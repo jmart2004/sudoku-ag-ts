@@ -33,14 +33,26 @@ first player to correctly fill every cell wins.
   Notes that a correct answer rules out are cleared automatically. Keyboard:
   `1`–`9` to enter a number, arrow keys to move, `N` or `Space` to toggle notes,
   `Backspace` to erase notes, `Ctrl/⌘+Z` to undo, `Esc` to deselect.
+- **What's missing, at a glance.** Right-click a cell (long-press on a phone,
+  or press `I`) to see which digits fit there, and what its row, column and
+  box still need. Tap a digit to enter it, or add them all as notes. The host
+  can switch this helper off in the settings so everyone races without it.
+- **Settings** (gear icon): lobby rules the host sets for everyone, and your
+  own preferences (sound effects, dark mode). New lobby options are added in
+  `RoomOptions` (`src/shared/protocol.ts`) and listed in
+  `src/components/SettingsDialog.tsx`.
 - **Sound.** Every correct number plays its own note (1–9 climb a pentatonic
-  scale), and a wrong one a soft buzz. Completing a row, column, box or
-  diagonal each has its own sound (a rising arpeggio, a falling cascade, a bell
-  chord, a high sparkle), and several at once end on a bonus chime. There are
+  scale), and a wrong one a soft buzz. Completing a row, column, box,
+  diagonal or number (all of its copies placed) each has its own sound: a
+  rising arpeggio, a falling cascade, a bell chord, a high sparkle, a coin-like
+  "collect". All 26 combinations of two or more have their own sound too,
+  with the parts layered in a key of their own and a finale that grows with
+  the size of the combo. A completed number's cells shine gold. There are
   also countdown, board-done, win and out-of-lives cues. Everything is
-  synthesized with Web Audio, so there are no sound files, and there's a mute
-  button in the race bar.
-- **Light and dark themes,** following your system until you choose one.
+  synthesized with Web Audio, so there are no sound files, and sound can be
+  turned off in the settings.
+- **Light and dark themes,** following your system until you choose one in the
+  settings.
 - **Refresh-safe.** Reloading the tab mid-race puts you back in your seat with
   your progress intact.
 - **Rematches.** After the results, the host can take everyone back to the lobby.
@@ -65,9 +77,18 @@ npm run serve
 
 This builds the app and serves both the site and the websocket from one Node
 process on `$PORT` (default 3000). It needs a host that runs Node and supports
-websockets, such as Render, Fly.io or Railway. A static host like GitHub Pages
-won't work. To point the client at a game server somewhere else, set
-`REACT_APP_WS_URL` (for example `wss://example.com/ws`) at build time.
+websockets. A static host like GitHub Pages won't work. To point the client at
+a game server somewhere else, set `REACT_APP_WS_URL` (for example
+`wss://example.com/ws`) at build time.
+
+### Free hosting on Render
+
+The repo includes a `render.yaml` blueprint. In Render, choose **New →
+Blueprint**, pick this repository, and confirm. You get an
+`https://sudoku-race-….onrender.com` link to share. On the free plan the
+service sleeps after 15 minutes without visitors, and the first visit after
+that takes about a minute to wake it. Lobbies are kept in memory, so a sleep or
+restart ends any game in progress.
 
 ## Project layout
 

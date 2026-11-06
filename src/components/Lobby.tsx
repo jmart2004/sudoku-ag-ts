@@ -10,14 +10,22 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { useGame } from "../game/GameContext";
 import { MAX_PLAYERS } from "../shared/protocol";
+import { isJigsawSize } from "../shared/engine";
 import DifficultyPicker from "./DifficultyPicker";
 import ModePicker from "./ModePicker";
 import SizePicker from "./SizePicker";
 import Avatar from "./ui/Avatar";
 
 const Lobby: React.FC = () => {
-  const { room, self, setDifficulty, setMode, setSize, startRace, leaveLobby } =
-    useGame();
+  const {
+    room,
+    self,
+    setDifficulty,
+    setMode,
+    setSize,
+    startRace,
+    leaveLobby,
+  } = useGame();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   // Coming back from a race's results, start at the lobby code.
@@ -112,7 +120,7 @@ const Lobby: React.FC = () => {
           {!isHost && <span className="muted">Chosen by {host?.name}</span>}
         </div>
         <SizePicker value={room.size} onChange={setSize} disabled={!isHost} />
-        {(room.size === 5 || room.size === 7) && (
+        {isJigsawSize(room.size) && (
           <p className="muted small">
             Jigsaw: instead of square boxes, the board is split into
             irregular regions that each hold 1–{room.size} once. Every

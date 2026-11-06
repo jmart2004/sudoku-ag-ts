@@ -38,7 +38,8 @@ import RaceTrack from "./RaceTrack";
 import OpponentBoard from "./OpponentBoard";
 import Countdown from "./Countdown";
 import Results from "./Results";
-import MuteButton from "./MuteButton";
+import SettingsButton from "./SettingsButton";
+import CellInspector, { InspectTarget } from "./CellInspector";
 
 const FEEDBACK_MS = 800;
 const BOARD_DONE_MS = 1200;
@@ -91,10 +92,14 @@ const Race: React.FC = () => {
     dispatch({ type: "reset", geometry });
   }, [raceId, boardKey, geometry]);
 
-  // Celebrate each finished board in timed mode.
+  // Celebrate each finished board in timed mode. The timer only clears the
+  // flash it was set for: it can fire just after a newer one arrives.
   useEffect(() => {
     if (!boardDone) return;
-    const timer = window.setTimeout(() => setBoardDone(null), BOARD_DONE_MS);
+    const timer = window.setTimeout(
+      () => setBoardDone((current) => (current === boardDone ? null : current)),
+      BOARD_DONE_MS
+    );
     return () => window.clearTimeout(timer);
   }, [boardDone]);
 
@@ -110,7 +115,7 @@ const Race: React.FC = () => {
   useEffect(() => {
     if (!state.feedbackId) return;
     const timer = window.setTimeout(
-      () => dispatch({ type: "clearFeedback" }),
+      () => dispatch({ type: "clearFeedback", feedbackId: state.feedbackId }),
       FEEDBACK_MS
     );
     return () => window.clearTimeout(timer);
@@ -125,10 +130,9 @@ const Race: React.FC = () => {
           // The server's new board may not have arrived yet; apply the move.
           const filled = [...boardRef.current];
           filled[result.cell] = result.value;
+          const done = completionOf(geometryRef.current, filled, result.cell);
           soundPlayer.correct(result.value);
-          soundPlayer.completions(
-            completionOf(geometryRef.current, filled, result.cell).kinds
-          );
+          soundPlayer.completions(done.kinds);
         }
         if (result.completedBoard && timed) {
           // A new board is on its way; skip the animations for the old one.
@@ -185,6 +189,16 @@ const Race: React.FC = () => {
     if (eliminated) soundPlayer.cue("lose");
   }, [eliminated]);
 
+  const [inspect, setInspect] = useState<InspectTarget | null>(null);
+  const closeInspector = useCallback(() => setInspect(null), []);
+  const openInspector = useCallback((cell: number, element: HTMLElement) => {
+    const { top, left, bottom, right } = element.getBoundingClientRect();
+    dispatch({ type: "focus", cell, board: boardRef.current });
+    setInspect({ cell, rect: { top, left, bottom, right } });
+  }, []);
+  // A new board, or the game ending, closes the panel.
+  useEffect(() => setInspect(null), [raceId, boardKey, phase]);
+
   const select = useCallback(
     (cell: number) => dispatch({ type: "select", cell, board: boardRef.current }),
     []
@@ -224,6 +238,15 @@ const Race: React.FC = () => {
       } else if (key === "n" || key === "N" || key === " ") {
         event.preventDefault();
         dispatch({ type: "toggleNoteMode" });
+      } else if (
+        (key === "i" || key === "?") &&
+        state.selected !== null &&
+        room?.options.helper
+      ) {
+        const element = document.querySelector<HTMLElement>(
+          `[data-cell="${state.selected}"]`
+        );
+        if (element) openInspector(state.selected, element);
       } else if (key === "Escape") {
         dispatch({ type: "deselect" });
       } else if (key in ARROWS) {
@@ -234,7 +257,13 @@ const Race: React.FC = () => {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [enterDigit, geometry.size]);
+  }, [
+    enterDigit,
+    geometry.size,
+    state.selected,
+    openInspector,
+    room?.options.helper,
+  ]);
 
   if (!room || !self || !me) return null;
 
@@ -274,7 +303,7 @@ const Race: React.FC = () => {
         >
           <FontAwesomeIcon icon={faArrowLeft} />
         </button>
-        <MuteButton />
+        <SettingsButton className="race-settings" />
         <span className={`chip chip-${room.difficulty}`}>
           {room.difficulty}
           {size !== 9 && ` · ${size}×${size}`}
@@ -324,6 +353,7 @@ const Race: React.FC = () => {
                 state={state}
                 notesVisible={state.noteMode && canPlay}
                 onSelect={select}
+                onInspect={room.options.helper ? openInspector : undefined}
               />
             ) : (
               <div className="board board-placeholder" />
@@ -388,6 +418,7 @@ const Race: React.FC = () => {
           />
           <p className="hint">
             Keys: 1–{size} enter · N notes · arrows move · ⌫ erase · ⌘/Ctrl+Z undo
+            {room.options.helper && " · right-click or I: what's missing"}
           </p>
         </div>
 
@@ -406,6 +437,26 @@ const Race: React.FC = () => {
         )}
       </div>
 
+      {inspect && board && room.options.helper && (
+        <CellInspector
+          geometry={geometry}
+          board={board}
+          target={inspect}
+          canPlay={canPlay && !(inspect.cell in state.pending)}
+          onPick={(digit) => {
+            if (board[inspect.cell] === 0) {
+              dispatch({ type: "guessSent", cell: inspect.cell, value: digit });
+              guess(inspect.cell, digit);
+            }
+            closeInspector();
+          }}
+          onPencil={(mask) => {
+            dispatch({ type: "setNotes", cell: inspect.cell, mask });
+            closeInspector();
+          }}
+          onClose={closeInspector}
+        />
+      )}
       {phase === "finished" && <Results />}
     </div>
   );

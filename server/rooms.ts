@@ -4,10 +4,12 @@
 import { randomBytes, randomUUID } from "crypto";
 import {
   COUNTDOWN_MS,
+  DEFAULT_ROOM_OPTIONS,
   GameMode,
   MAX_NAME_LENGTH,
   MAX_PLAYERS,
   PlayerView,
+  RoomOptions,
   RoomPhase,
   RoomView,
   SelfView,
@@ -67,6 +69,7 @@ export class Room {
   phase: RoomPhase = "lobby";
   difficulty: Difficulty;
   size = DEFAULT_SIZE;
+  options: RoomOptions = { ...DEFAULT_ROOM_OPTIONS };
   mode: GameMode = "race";
   durationMs = TIMED_DURATIONS_MS[1];
   players: Player[] = [];
@@ -153,6 +156,20 @@ export class Room {
       throw new GameError("Unknown difficulty.");
     }
     this.difficulty = difficulty;
+  }
+
+  setOptions(playerId: string, changes: Partial<RoomOptions>) {
+    this.requireLobbyHost(playerId);
+    for (const [key, value] of Object.entries(changes ?? {})) {
+      // Only known options, with the same type as their default.
+      if (
+        !(key in DEFAULT_ROOM_OPTIONS) ||
+        typeof value !== typeof DEFAULT_ROOM_OPTIONS[key as keyof RoomOptions]
+      ) {
+        throw new GameError("Unknown option.");
+      }
+    }
+    this.options = { ...this.options, ...changes };
   }
 
   setSize(playerId: string, size: number) {
@@ -353,6 +370,7 @@ export class Room {
       phase: this.phase,
       difficulty: this.difficulty,
       size: this.size,
+      options: this.options,
       mode: this.mode,
       durationMs: this.durationMs,
       players: this.players.map(

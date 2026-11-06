@@ -12,6 +12,7 @@ import React, {
 import {
   ClientMessage,
   GameMode,
+  RoomOptions,
   RoomView,
   SelfView,
   ServerMessage,
@@ -51,6 +52,7 @@ interface GameContextProps {
   setDifficulty: (difficulty: Difficulty) => void;
   setMode: (mode: GameMode, durationMs: number) => void;
   setSize: (size: number) => void;
+  setOptions: (options: Partial<RoomOptions>) => void;
   startRace: () => void;
   guess: (cell: number, value: number) => void;
   backToLobby: () => void;
@@ -231,6 +233,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({
       setDifficulty: (difficulty) => send({ type: "setDifficulty", difficulty }),
       setMode: (mode, durationMs) => send({ type: "setMode", mode, durationMs }),
       setSize: (size) => send({ type: "setSize", size }),
+      setOptions: (options) => send({ type: "setOptions", options }),
       startRace: () => send({ type: "start" }),
       guess: (cell, value) => send({ type: "guess", cell, value }),
       backToLobby: () => send({ type: "backToLobby" }),
