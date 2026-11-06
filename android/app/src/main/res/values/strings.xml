@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Sudoku Race</string>
+    <string name="title_activity_main">Sudoku Race</string>
+    <string name="package_name">com.sudokurace.app</string>
+    <string name="custom_url_scheme">com.sudokurace.app</string>
+</resources>

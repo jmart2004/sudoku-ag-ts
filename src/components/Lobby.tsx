@@ -6,9 +6,12 @@ import {
   faCrown,
   faLink,
   faPlay,
+  faShareNodes,
   faUserPlus,
 } from "@fortawesome/free-solid-svg-icons";
+import { Share } from "@capacitor/share";
 import { useGame } from "../game/GameContext";
+import { inviteLinkFor, isNativeApp } from "../platform";
 import { MAX_PLAYERS } from "../shared/protocol";
 import { isJigsawSize } from "../shared/engine";
 import DifficultyPicker from "./DifficultyPicker";
@@ -35,10 +38,22 @@ const Lobby: React.FC = () => {
   if (!room || !self) return null;
 
   const isHost = room.hostId === self.playerId;
-  const inviteLink = `${window.location.origin}/room/${room.code}`;
+  const inviteLink = inviteLinkFor(room.code);
   const host = room.players.find((p) => p.id === room.hostId);
 
   const copyInvite = async () => {
+    if (isNativeApp) {
+      try {
+        await Share.share({
+          title: "Join my Sudoku Race",
+          text: `Race me at sudoku! Lobby code ${room.code}`,
+          url: inviteLink,
+        });
+      } catch {
+        // Closing the share sheet counts as an error; nothing to do.
+      }
+      return;
+    }
     try {
       await navigator.clipboard.writeText(inviteLink);
       setCopied(true);
@@ -58,8 +73,14 @@ const Lobby: React.FC = () => {
           ))}
         </div>
         <button className="btn" onClick={copyInvite}>
-          <FontAwesomeIcon icon={copied ? faCheck : faLink} />
-          {copied ? "Copied!" : "Copy invite link"}
+          <FontAwesomeIcon
+            icon={copied ? faCheck : isNativeApp ? faShareNodes : faLink}
+          />
+          {copied
+            ? "Copied!"
+            : isNativeApp
+              ? "Share invite link"
+              : "Copy invite link"}
         </button>
       </section>
 

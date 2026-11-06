@@ -23,8 +23,32 @@ const MIME_TYPES: Record<string, string> = {
   ".map": "application/json",
 };
 
+// Lets Android open invite links straight in the app. Set
+// ANDROID_CERT_SHA256 to the app's signing certificate fingerprint (comma
+// separated for several, e.g. debug and release).
+const ANDROID_APP_ID = "com.sudokurace.app";
+const assetLinks = (process.env.ANDROID_CERT_SHA256 ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 const httpServer = createServer((req, res) => {
   const urlPath = decodeURIComponent((req.url ?? "/").split("?")[0]);
+  if (urlPath === "/.well-known/assetlinks.json" && assetLinks.length) {
+    res.writeHead(200, { "Content-Type": "application/json" }).end(
+      JSON.stringify([
+        {
+          relation: ["delegate_permission/common.handle_all_urls"],
+          target: {
+            namespace: "android_app",
+            package_name: ANDROID_APP_ID,
+            sha256_cert_fingerprints: assetLinks,
+          },
+        },
+      ])
+    );
+    return;
+  }
   let filePath = path.join(BUILD_DIR, urlPath);
   if (!filePath.startsWith(BUILD_DIR)) {
     res.writeHead(400).end();

@@ -18,6 +18,7 @@ import {
   ServerMessage,
 } from "../shared/protocol";
 import { Difficulty } from "../shared/engine";
+import { isNativeApp, siteOrigin } from "../platform";
 
 interface Session {
   code: string;
@@ -87,6 +88,9 @@ const saveSession = (session: Session | null) => {
 const socketUrl = () => {
   if (process.env.REACT_APP_WS_URL) {
     return process.env.REACT_APP_WS_URL;
+  }
+  if (isNativeApp) {
+    return `${siteOrigin().replace(/^http/, "ws")}/ws`;
   }
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   // In development the React dev server and the game server run separately.
@@ -180,9 +184,24 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({
       };
     };
 
+    // Phones drop the socket while the app or tab is in the background;
+    // reconnect as soon as it's back instead of waiting out the backoff.
+    const onVisible = () => {
+      if (
+        document.visibilityState === "visible" &&
+        socketRef.current?.readyState === WebSocket.CLOSED
+      ) {
+        window.clearTimeout(retryTimer);
+        attempts = 0;
+        connect();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
     connect();
     return () => {
       disposed = true;
+      document.removeEventListener("visibilitychange", onVisible);
       window.clearTimeout(retryTimer);
       socketRef.current?.close();
     };
