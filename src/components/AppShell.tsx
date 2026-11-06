@@ -1,13 +1,10 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMoon, faSun } from "@fortawesome/free-solid-svg-icons";
 import { useGame } from "../game/GameContext";
-import { useTheme } from "../game/theme";
 import Logo from "./ui/Logo";
+import SettingsButton from "./SettingsButton";
 
 const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, toggleTheme] = useTheme();
   const { status } = useGame();
 
   return (
@@ -26,13 +23,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <Link to="/stats" className="topbar-link">
             Stats
           </Link>
-          <button
-            className="icon-btn"
-            onClick={toggleTheme}
-            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-          >
-            <FontAwesomeIcon icon={theme === "dark" ? faSun : faMoon} />
-          </button>
+          <SettingsButton />
         </div>
       </nav>
       {children}

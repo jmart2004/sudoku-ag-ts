@@ -25,11 +25,10 @@ import {
   initialBoardState,
   planInput,
 } from "../game/boardReducer";
-import { CompletionKind, soundPlayer } from "../game/sounds";
+import { soundPlayer } from "../game/sounds";
 import { formatTime, recordRace, recordTimedRun } from "../utility/Stats";
 import {
   geometryFor,
-  isJigsawSize,
   STARTING_LIVES,
   standardGeometry,
 } from "../shared/engine";
@@ -39,33 +38,11 @@ import RaceTrack from "./RaceTrack";
 import OpponentBoard from "./OpponentBoard";
 import Countdown from "./Countdown";
 import Results from "./Results";
-import MuteButton from "./MuteButton";
+import SettingsButton from "./SettingsButton";
 import CellInspector, { InspectTarget } from "./CellInspector";
 
 const FEEDBACK_MS = 800;
 const BOARD_DONE_MS = 1200;
-const BADGE_MS = 1600;
-const BADGE_TITLES = ["", "", "Double!", "Triple!", "Quad!", "Perfect!"];
-
-interface Badge {
-  id: number;
-  kinds: CompletionKind[];
-  digit: number | null;
-}
-
-// "Row + Column", "Row + Box + All 7s"...
-function badgeText({ kinds, digit }: Badge, regionName: string) {
-  const names: Record<CompletionKind, string> = {
-    row: "Row",
-    column: "Column",
-    region: regionName,
-    diagonal: "Diagonal",
-    digit: `All ${digit}s`,
-  };
-  const title =
-    kinds.length === 1 ? `Every ${digit} placed!` : BADGE_TITLES[kinds.length];
-  return { title, detail: kinds.map((k) => names[k]).join(" + ") };
-}
 // The timed-mode clock turns urgent for the last stretch.
 const FINAL_STRETCH_MS = 30 * 1000;
 const ARROWS: Record<string, [number, number]> = {
@@ -82,8 +59,6 @@ const Race: React.FC = () => {
   const [state, dispatch] = useReducer(boardReducer, undefined, initialBoardState);
   const [now, setNow] = useState(() => Date.now() + clockOffset);
   const [boardDone, setBoardDone] = useState<number | null>(null);
-  const [badge, setBadge] = useState<Badge | null>(null);
-  const badgeId = useRef(0);
   const boardRef = useRef<number[]>([]);
 
   const board = self?.board ?? null;
@@ -117,18 +92,8 @@ const Race: React.FC = () => {
     dispatch({ type: "reset", geometry });
   }, [raceId, boardKey, geometry]);
 
-  // These timers only clear what they were set for: a timer can fire just
-  // after a newer badge or flash arrives, before React swaps the timer.
-  useEffect(() => {
-    if (!badge) return;
-    const timer = window.setTimeout(
-      () => setBadge((current) => (current?.id === badge.id ? null : current)),
-      BADGE_MS
-    );
-    return () => window.clearTimeout(timer);
-  }, [badge]);
-
-  // Celebrate each finished board in timed mode.
+  // Celebrate each finished board in timed mode. The timer only clears the
+  // flash it was set for: it can fire just after a newer one arrives.
   useEffect(() => {
     if (!boardDone) return;
     const timer = window.setTimeout(
@@ -168,10 +133,6 @@ const Race: React.FC = () => {
           const done = completionOf(geometryRef.current, filled, result.cell);
           soundPlayer.correct(result.value);
           soundPlayer.completions(done.kinds);
-          // Name it on screen when it's a combination, or a whole number.
-          if (done.kinds.length > 1 || done.digit) {
-            setBadge({ id: ++badgeId.current, kinds: done.kinds, digit: done.digit });
-          }
         }
         if (result.completedBoard && timed) {
           // A new board is on its way; skip the animations for the old one.
@@ -280,7 +241,7 @@ const Race: React.FC = () => {
       } else if (
         (key === "i" || key === "?") &&
         state.selected !== null &&
-        room?.helper
+        room?.options.helper
       ) {
         const element = document.querySelector<HTMLElement>(
           `[data-cell="${state.selected}"]`
@@ -296,7 +257,13 @@ const Race: React.FC = () => {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [enterDigit, geometry.size, state.selected, openInspector, room?.helper]);
+  }, [
+    enterDigit,
+    geometry.size,
+    state.selected,
+    openInspector,
+    room?.options.helper,
+  ]);
 
   if (!room || !self || !me) return null;
 
@@ -320,8 +287,6 @@ const Race: React.FC = () => {
   const countdown = countdownSeconds;
   const opponents = room.players.filter((p) => p.id !== me.id);
   const maxLives = STARTING_LIVES[room.difficulty];
-  const badgeLabel =
-    badge && badgeText(badge, isJigsawSize(size) ? "Region" : "Box");
 
   return (
     <div className="race">
@@ -338,7 +303,7 @@ const Race: React.FC = () => {
         >
           <FontAwesomeIcon icon={faArrowLeft} />
         </button>
-        <MuteButton />
+        <SettingsButton className="race-settings" />
         <span className={`chip chip-${room.difficulty}`}>
           {room.difficulty}
           {size !== 9 && ` · ${size}×${size}`}
@@ -388,20 +353,10 @@ const Race: React.FC = () => {
                 state={state}
                 notesVisible={state.noteMode && canPlay}
                 onSelect={select}
-                onInspect={room.helper ? openInspector : undefined}
+                onInspect={room.options.helper ? openInspector : undefined}
               />
             ) : (
               <div className="board board-placeholder" />
-            )}
-            {badge && (
-              <div
-                key={badge.id}
-                className={`combo-badge combo-${badge.kinds.length}`}
-                aria-live="polite"
-              >
-                <strong>{badgeLabel!.title}</strong>
-                <span>{badgeLabel!.detail}</span>
-              </div>
             )}
             {countdown !== null && <Countdown seconds={countdown} />}
             {locked && phase === "playing" && (
@@ -463,7 +418,7 @@ const Race: React.FC = () => {
           />
           <p className="hint">
             Keys: 1–{size} enter · N notes · arrows move · ⌫ erase · ⌘/Ctrl+Z undo
-            {room.helper && " · right-click or I: what's missing"}
+            {room.options.helper && " · right-click or I: what's missing"}
           </p>
         </div>
 
@@ -482,7 +437,7 @@ const Race: React.FC = () => {
         )}
       </div>
 
-      {inspect && board && room.helper && (
+      {inspect && board && room.options.helper && (
         <CellInspector
           geometry={geometry}
           board={board}

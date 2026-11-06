@@ -6,6 +6,17 @@ export const MAX_PLAYERS = 4;
 export const COUNTDOWN_MS = 3000;
 export const MAX_NAME_LENGTH = 16;
 
+// Rules the host sets for everyone in the lobby. To add one, add it here
+// with its default and describe it in ROOM_OPTION_INFO in SettingsDialog.
+export interface RoomOptions {
+  // The what's-missing helper (right-click / long-press a cell).
+  helper: boolean;
+}
+
+export const DEFAULT_ROOM_OPTIONS: RoomOptions = {
+  helper: true,
+};
+
 export type RoomPhase = "lobby" | "countdown" | "playing" | "finished";
 
 // Race: first to finish one board wins. Timed: most boards in the time limit.
@@ -40,8 +51,7 @@ export interface RoomView {
   difficulty: Difficulty;
   // Board is size × size, using the digits 1..size.
   size: number;
-  // Whether players may use the what's-missing helper (right-click / long-press).
-  helper: boolean;
+  options: RoomOptions;
   mode: GameMode;
   durationMs: number;
   players: PlayerView[];
@@ -71,7 +81,7 @@ export type ClientMessage =
   | { type: "rejoin"; code: string; playerId: string; token: string }
   | { type: "setDifficulty"; difficulty: Difficulty }
   | { type: "setSize"; size: number }
-  | { type: "setHelper"; enabled: boolean }
+  | { type: "setOptions"; options: Partial<RoomOptions> }
   | { type: "setMode"; mode: GameMode; durationMs: number }
   | { type: "start" }
   | { type: "guess"; cell: number; value: number }

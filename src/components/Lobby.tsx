@@ -23,7 +23,6 @@ const Lobby: React.FC = () => {
     setDifficulty,
     setMode,
     setSize,
-    setHelper,
     startRace,
     leaveLobby,
   } = useGame();
@@ -141,30 +140,6 @@ const Lobby: React.FC = () => {
           disabled={!isHost}
           showLives={room.mode === "race"}
         />
-      </section>
-
-      <section className="panel">
-        <div className="panel-head">
-          <h2>Options</h2>
-          {!isHost && <span className="muted">Chosen by {host?.name}</span>}
-        </div>
-        <label className={`option-row${isHost ? "" : " readonly"}`}>
-          <span className="option-text">
-            <strong>What's-missing helper</strong>
-            <span className="muted small">
-              Right-click or long-press a cell to see which numbers fit there
-              and what its row, column and box still need.
-            </span>
-          </span>
-          <input
-            type="checkbox"
-            role="switch"
-            className="switch"
-            checked={room.helper}
-            disabled={!isHost}
-            onChange={(e) => setHelper(e.target.checked)}
-          />
-        </label>
       </section>
 
       <div className="lobby-actions">
