@@ -1,7 +1,7 @@
-import { bit, generatePuzzle } from "../shared/engine";
+import { bit, generatePuzzle, geometryFor } from "../shared/engine";
 import { boardReducer, initialBoardState, planInput } from "./boardReducer";
 
-const { puzzle, solution } = generatePuzzle("easy");
+const { puzzle, solution } = generatePuzzle(9, "easy");
 const emptyCell = puzzle.indexOf(0);
 const givenCell = puzzle.findIndex((v) => v !== 0);
 
@@ -26,6 +26,41 @@ test("arrow movement wraps around the board", () => {
   });
   state = boardReducer(state, { type: "move", dRow: -1, dCol: -1, board: puzzle });
   expect(state.selected).toBe(80);
+});
+
+test("other sizes: movement wraps within the board and reset sizes the notes", () => {
+  const small = generatePuzzle(6, "easy");
+  const geometry = geometryFor(small.regions);
+  let state = boardReducer(initialBoardState(), { type: "reset", geometry });
+  expect(state.notes).toHaveLength(36);
+  state = boardReducer(state, { type: "select", cell: 0, board: small.puzzle });
+  state = boardReducer(state, {
+    type: "move",
+    dRow: -1,
+    dCol: -1,
+    board: small.puzzle,
+  });
+  expect(state.selected).toBe(35);
+});
+
+test("jigsaw boards: a wrong guess points at clashes in its region", () => {
+  const jig = generatePuzzle(5, "easy");
+  const geometry = geometryFor(jig.regions);
+  const cell = jig.puzzle.indexOf(0);
+  // A digit already given somewhere in the cell's region.
+  const regionPeer = geometry.peers[cell].find(
+    (p) => jig.regions[p] === jig.regions[cell] && jig.puzzle[p] !== 0
+  );
+  if (regionPeer === undefined) return;
+  let state = boardReducer(initialBoardState(), { type: "reset", geometry });
+  state = boardReducer(state, {
+    type: "guessResult",
+    cell,
+    value: jig.puzzle[regionPeer],
+    correct: false,
+    board: jig.puzzle,
+  });
+  expect(state.wrong?.conflicts).toContain(regionPeer);
 });
 
 test("planInput routes digits to guesses, notes or highlights", () => {

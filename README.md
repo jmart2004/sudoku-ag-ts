@@ -12,11 +12,16 @@ first player to correctly fill every cell wins.
     wins. Everyone gets the same boards in the same order, and finishing one
     deals the next. Instead of costing a life, a wrong number locks your board
     for 3 seconds.
+- **Board sizes from 4×4 to 9×9.** 4×4, 6×6 and 8×8 use rectangular boxes
+  (2×2, 2×3, 2×4) and 9×9 is classic. 5×5 and 7×7 can't be split into
+  rectangles, so they're **jigsaw** boards: irregular regions that each hold
+  every digit once, with a new layout for every puzzle.
 - **Fair, properly graded boards.** Every puzzle has exactly one solution, so
   no valid answer is ever marked wrong. Difficulty comes from the techniques
   the puzzle needs, not just how many clues it has: easy needs only singles,
   medium needs locked candidates, and hard needs pairs, triples or an X-wing.
-  No puzzle ever needs guessing.
+  No puzzle ever needs guessing. Small boards rarely need advanced
+  techniques, so their difficulty mostly comes from how many clues they have.
 - **Server-judged moves.** The solution never leaves the server. Each guess is
   checked there. In a race, a wrong number costs a life, and a player who runs
   out of lives is out.
@@ -61,7 +66,7 @@ won't work. To point the client at a game server somewhere else, set
 
 | Path | What's there |
 | --- | --- |
-| `src/shared/engine/` | Sudoku engine shared by client and server: grid geometry, solver, technique-based grader and generator |
+| `src/shared/engine/` | Sudoku engine shared by client and server: board geometry for every size (boxes and jigsaw regions), solver, technique-based grader and generator |
 | `src/shared/protocol.ts` | Client/server message types |
 | `server/` | Websocket server (`index.ts`), lobby/race rules (`rooms.ts`) and a background puzzle pool (`puzzlePool.ts`) |
 | `src/game/GameContext.tsx` | Client connection, reconnect and rejoin logic |

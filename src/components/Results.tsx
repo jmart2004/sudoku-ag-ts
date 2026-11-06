@@ -69,7 +69,7 @@ const Results: React.FC = () => {
           {room.standings.map((id, index) => {
             const player = room.players.find((p) => p.id === id);
             if (!player) return null;
-            const toFill = 81 - player.givens.length;
+            const toFill = room.size * room.size - player.givens.length;
             const percent = toFill
               ? Math.round((player.filled.length / toFill) * 100)
               : 0;

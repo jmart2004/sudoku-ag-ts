@@ -1,7 +1,13 @@
 // Builds puzzles with a single solution, graded by the techniques they need.
 
 import { Grade, gradePuzzle, Technique } from "./grader";
-import { CELLS, shuffle } from "./grid";
+import {
+  geometryFor,
+  isJigsawSize,
+  randomJigsawRegions,
+  shuffle,
+  standardGeometry,
+} from "./grid";
 import { countSolutions, randomSolvedGrid } from "./solver";
 
 export type Difficulty = "easy" | "medium" | "hard";
@@ -15,8 +21,9 @@ export const STARTING_LIVES: Record<Difficulty, number> = {
 };
 
 interface DifficultySpec {
-  // Stop removing clues once the puzzle is down to this many.
-  minClues: number;
+  // Stop removing clues once the puzzle is down to this share of its cells
+  // (on 9×9: 38, 26 and 22 clues).
+  minClueShare: number;
   // The hardest technique a solver must need, inclusive.
   techniques: [Technique, Technique];
 }
@@ -24,38 +31,58 @@ interface DifficultySpec {
 const SPECS: Record<Difficulty, DifficultySpec> = {
   // Generous clues; singles only.
   easy: {
-    minClues: 38,
+    minClueShare: 0.47,
     techniques: [Technique.NakedSingle, Technique.HiddenSingle],
   },
   // Sparse, and singles alone are never enough.
   medium: {
-    minClues: 26,
+    minClueShare: 0.32,
     techniques: [Technique.LockedCandidates, Technique.LockedCandidates],
   },
   // Needs pairs, triples or an X-wing, but never guessing.
   hard: {
-    minClues: 22,
+    minClueShare: 0.27,
     techniques: [Technique.NakedPair, Technique.XWing],
   },
 };
 
+// Small boards rarely or never need advanced techniques. After this many
+// attempts the closest puzzle found is used instead; on small boards the
+// difficulty then comes from the number of clues.
+export const MAX_ATTEMPTS = 150;
+
 export interface GeneratedPuzzle {
+  size: number;
+  // Region id of each cell (boxes, or jigsaw pieces).
+  regions: number[];
   puzzle: number[];
   solution: number[];
   grade: Grade;
 }
 
+export interface Attempt {
+  result: GeneratedPuzzle;
+  // 0 when the grade is in the target range; larger means further off.
+  distance: number;
+}
+
 // Clear clues in 180-degree-symmetric pairs, keeping the solution unique.
-function carve(solution: number[], minClues: number): number[] {
+function carve(
+  geometry: ReturnType<typeof geometryFor>,
+  solution: number[],
+  minClues: number
+): number[] {
+  const { cellCount } = geometry;
   const puzzle = [...solution];
-  let clues = 81;
-  for (const cell of shuffle(CELLS.slice(0, 41))) {
-    const mirror = 80 - cell;
+  let clues = cellCount;
+  const half = geometry.cells.slice(0, Math.ceil(cellCount / 2));
+  for (const cell of shuffle(half)) {
+    const mirror = cellCount - 1 - cell;
     const removing = cell === mirror ? 1 : 2;
     if (clues - removing < minClues) continue;
     puzzle[cell] = 0;
     puzzle[mirror] = 0;
-    if (countSolutions(puzzle) === 1) {
+    if (countSolutions(geometry, puzzle) === 1) {
       clues -= removing;
     } else {
       puzzle[cell] = solution[cell];
@@ -65,25 +92,50 @@ function carve(solution: number[], minClues: number): number[] {
   return puzzle;
 }
 
-const fits = (grade: Grade, [low, high]: [Technique, Technique]) =>
-  grade.solved && grade.hardest >= low && grade.hardest <= high;
-
-// One generation attempt; null if the puzzle didn't land in the target grade.
-export function tryGeneratePuzzle(
-  difficulty: Difficulty
-): GeneratedPuzzle | null {
-  const spec = SPECS[difficulty];
-  const solution = randomSolvedGrid();
-  const puzzle = carve(solution, spec.minClues);
-  const grade = gradePuzzle(puzzle);
-  return fits(grade, spec.techniques) ? { puzzle, solution, grade } : null;
+function gradeDistance(grade: Grade, [low, high]: [Technique, Technique]) {
+  // Puzzles needing guessing are never used if anything else exists.
+  if (!grade.solved) return 100;
+  if (grade.hardest < low) return low - grade.hardest;
+  if (grade.hardest > high) return grade.hardest - high;
+  return 0;
 }
 
-// Keep trying until a puzzle fits the grade. Hard puzzles take ~30 attempts
-// (around 150ms) on average.
-export function generatePuzzle(difficulty: Difficulty): GeneratedPuzzle {
-  for (;;) {
-    const result = tryGeneratePuzzle(difficulty);
-    if (result) return result;
+// One generation attempt, scored by how close it lands to the target grade.
+// Null if a random jigsaw layout turned out to have no solution.
+export function attemptPuzzle(
+  size: number,
+  difficulty: Difficulty
+): Attempt | null {
+  const spec = SPECS[difficulty];
+  const geometry = isJigsawSize(size)
+    ? geometryFor(randomJigsawRegions(size))
+    : standardGeometry(size);
+  const solution = randomSolvedGrid(geometry);
+  if (!solution) return null;
+  const puzzle = carve(
+    geometry,
+    solution,
+    Math.ceil(spec.minClueShare * geometry.cellCount)
+  );
+  const grade = gradePuzzle(geometry, puzzle);
+  return {
+    result: { size, regions: geometry.regions, puzzle, solution, grade },
+    distance: gradeDistance(grade, spec.techniques),
+  };
+}
+
+// Keep trying until a puzzle fits the grade, or settle for the closest
+// after MAX_ATTEMPTS. Hard 9×9 puzzles take ~30 attempts on average.
+export function generatePuzzle(
+  size: number,
+  difficulty: Difficulty
+): GeneratedPuzzle {
+  let best: Attempt | null = null;
+  for (let i = 0; i < MAX_ATTEMPTS || !best; i++) {
+    const attempt = attemptPuzzle(size, difficulty);
+    if (!attempt) continue;
+    if (attempt.distance === 0) return attempt.result;
+    if (!best || attempt.distance < best.distance) best = attempt;
   }
+  return best.result;
 }

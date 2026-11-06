@@ -15,9 +15,11 @@ import {
   TIMED_PENALTY_MS,
 } from "../src/shared/protocol";
 import {
+  DEFAULT_SIZE,
   Difficulty,
   DIFFICULTIES,
   GeneratedPuzzle,
+  SIZES,
   STARTING_LIVES,
 } from "../src/shared/engine";
 import { PuzzlePool } from "./puzzlePool";
@@ -51,6 +53,7 @@ interface Player {
   boardIndex: number;
   puzzle: number[];
   board: number[];
+  regions: number[];
   lives: number;
   mistakes: number;
   eliminated: boolean;
@@ -63,6 +66,7 @@ export class Room {
   hostId = "";
   phase: RoomPhase = "lobby";
   difficulty: Difficulty;
+  size = DEFAULT_SIZE;
   mode: GameMode = "race";
   durationMs = TIMED_DURATIONS_MS[1];
   players: Player[] = [];
@@ -98,6 +102,7 @@ export class Room {
       boardIndex: 0,
       puzzle: [],
       board: [],
+      regions: [],
       lives: 0,
       mistakes: 0,
       eliminated: false,
@@ -148,6 +153,16 @@ export class Room {
       throw new GameError("Unknown difficulty.");
     }
     this.difficulty = difficulty;
+  }
+
+  setSize(playerId: string, size: number) {
+    this.requireLobbyHost(playerId);
+    if (!SIZES.includes(size)) {
+      throw new GameError("Unsupported board size.");
+    }
+    this.size = size;
+    // Start finding puzzles of this size while the lobby fills up.
+    puzzles.warm(size);
   }
 
   setMode(playerId: string, mode: GameMode, durationMs: number) {
@@ -203,10 +218,11 @@ export class Room {
     // In timed mode draw one ahead so the next board is ready instantly.
     const needed = this.mode === "timed" ? index + 2 : index + 1;
     while (this.deck.length < needed) {
-      this.deck.push(puzzles.take(this.difficulty));
+      this.deck.push(puzzles.take(this.size, this.difficulty));
     }
     player.boardIndex = index;
     player.puzzle = this.deck[index].puzzle;
+    player.regions = this.deck[index].regions;
     player.board = [...player.puzzle];
   }
 
@@ -221,10 +237,10 @@ export class Room {
     if (
       !Number.isInteger(cell) ||
       cell < 0 ||
-      cell > 80 ||
+      cell >= this.size * this.size ||
       !Number.isInteger(value) ||
       value < 1 ||
-      value > 9
+      value > this.size
     ) {
       throw new GameError("Invalid move.");
     }
@@ -336,6 +352,7 @@ export class Room {
       hostId: this.hostId,
       phase: this.phase,
       difficulty: this.difficulty,
+      size: this.size,
       mode: this.mode,
       durationMs: this.durationMs,
       players: this.players.map(
@@ -371,6 +388,7 @@ export class Room {
       playerId,
       puzzle: show ? player.puzzle : null,
       board: show ? player.board : null,
+      regions: show ? player.regions : null,
       lockedUntil: player?.lockedUntil ?? null,
     };
   }

@@ -50,6 +50,7 @@ interface GameContextProps {
   leaveLobby: () => void;
   setDifficulty: (difficulty: Difficulty) => void;
   setMode: (mode: GameMode, durationMs: number) => void;
+  setSize: (size: number) => void;
   startRace: () => void;
   guess: (cell: number, value: number) => void;
   backToLobby: () => void;
@@ -229,6 +230,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({
       leaveLobby,
       setDifficulty: (difficulty) => send({ type: "setDifficulty", difficulty }),
       setMode: (mode, durationMs) => send({ type: "setMode", mode, durationMs }),
+      setSize: (size) => send({ type: "setSize", size }),
       startRace: () => send({ type: "start" }),
       guess: (cell, value) => send({ type: "guess", cell, value }),
       backToLobby: () => send({ type: "backToLobby" }),

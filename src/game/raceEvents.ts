@@ -12,8 +12,8 @@ export interface RaceEvent {
 
 const MILESTONES = [50, 90];
 
-const percentDone = (player: PlayerView) => {
-  const toFill = 81 - player.givens.length;
+const percentDone = (player: PlayerView, size: number) => {
+  const toFill = size * size - player.givens.length;
   return toFill ? (player.filled.length / toFill) * 100 : 0;
 };
 
@@ -57,8 +57,8 @@ export function diffRoom(
         });
       }
     } else if (!you && bothPlaying) {
-      const was = percentDone(old);
-      const now = percentDone(player);
+      const was = percentDone(old, prev.size);
+      const now = percentDone(player, next.size);
       const milestone = MILESTONES.filter((m) => was < m && now >= m).pop();
       if (milestone === 50) {
         events.push({ text: `${player.name} is halfway there`, tone: "info", color });

@@ -12,10 +12,11 @@ import { useGame } from "../game/GameContext";
 import { MAX_PLAYERS } from "../shared/protocol";
 import DifficultyPicker from "./DifficultyPicker";
 import ModePicker from "./ModePicker";
+import SizePicker from "./SizePicker";
 import Avatar from "./ui/Avatar";
 
 const Lobby: React.FC = () => {
-  const { room, self, setDifficulty, setMode, startRace, leaveLobby } =
+  const { room, self, setDifficulty, setMode, setSize, startRace, leaveLobby } =
     useGame();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
@@ -103,6 +104,21 @@ const Lobby: React.FC = () => {
           onChange={setMode}
           disabled={!isHost}
         />
+      </section>
+
+      <section className="panel">
+        <div className="panel-head">
+          <h2>Board size</h2>
+          {!isHost && <span className="muted">Chosen by {host?.name}</span>}
+        </div>
+        <SizePicker value={room.size} onChange={setSize} disabled={!isHost} />
+        {(room.size === 5 || room.size === 7) && (
+          <p className="muted small">
+            Jigsaw: instead of square boxes, the board is split into
+            irregular regions that each hold 1–{room.size} once. Every
+            board gets a new layout.
+          </p>
+        )}
       </section>
 
       <section className="panel">

@@ -1,6 +1,13 @@
 // The race itself: your board, the track, rivals' boards, countdown and results.
 
-import React, { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -18,7 +25,11 @@ import {
   planInput,
 } from "../game/boardReducer";
 import { formatTime, recordRace, recordTimedRun } from "../utility/Stats";
-import { STARTING_LIVES } from "../shared/engine";
+import {
+  geometryFor,
+  STARTING_LIVES,
+  standardGeometry,
+} from "../shared/engine";
 import Board from "./Board";
 import NumberPad from "./NumberPad";
 import RaceTrack from "./RaceTrack";
@@ -47,6 +58,13 @@ const Race: React.FC = () => {
   const boardRef = useRef<number[]>([]);
 
   const board = self?.board ?? null;
+  const size = room?.size ?? 9;
+  // The current board's shape; jigsaw boards each have their own regions.
+  const regions = self?.regions;
+  const geometry = useMemo(
+    () => (regions ? geometryFor(regions) : standardGeometry(size)),
+    [regions, size]
+  );
   boardRef.current = board ?? [];
   const me = room?.players.find((p) => p.id === self?.playerId);
   const phase = room?.phase;
@@ -65,8 +83,8 @@ const Race: React.FC = () => {
   const boardNumber = me?.boardsCompleted ?? 0;
   const boardKey = timed ? boardNumber : 0;
   useEffect(() => {
-    dispatch({ type: "reset" });
-  }, [raceId, boardKey]);
+    dispatch({ type: "reset", geometry });
+  }, [raceId, boardKey, geometry]);
 
   // Celebrate each finished board in timed mode.
   useEffect(() => {
@@ -112,6 +130,7 @@ const Race: React.FC = () => {
     if (room.mode === "timed") {
       recordTimedRun(
         raceId,
+        room.size,
         room.difficulty,
         room.durationMs,
         me.boardsCompleted,
@@ -120,6 +139,7 @@ const Race: React.FC = () => {
     } else {
       recordRace(
         raceId,
+        room.size,
         room.difficulty,
         room.winnerId === me.id ? me.finishedMs : null
       );
@@ -158,7 +178,7 @@ const Race: React.FC = () => {
         return;
       }
       const { key } = event;
-      if (key >= "1" && key <= "9") {
+      if (key >= "1" && key <= String(geometry.size)) {
         enterDigit(Number(key));
       } else if (key === "Backspace" || key === "Delete" || key === "0") {
         dispatch({ type: "clearNotes" });
@@ -175,7 +195,7 @@ const Race: React.FC = () => {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [enterDigit]);
+  }, [enterDigit, geometry.size]);
 
   if (!room || !self || !me) return null;
 
@@ -218,7 +238,10 @@ const Race: React.FC = () => {
         >
           <FontAwesomeIcon icon={faArrowLeft} />
         </button>
-        <span className={`chip chip-${room.difficulty}`}>{room.difficulty}</span>
+        <span className={`chip chip-${room.difficulty}`}>
+          {room.difficulty}
+          {size !== 9 && ` · ${size}×${size}`}
+        </span>
         <span
           className={`race-timer${finalStretch ? " urgent" : ""}`}
           aria-label={timed ? "Time left" : "Time elapsed"}
@@ -248,6 +271,7 @@ const Race: React.FC = () => {
 
       <RaceTrack
         players={room.players}
+        cellCount={size * size}
         timed={timed}
         selfId={me.id}
         winnerId={room.winnerId}
@@ -319,13 +343,14 @@ const Race: React.FC = () => {
           </div>
 
           <NumberPad
-            board={board ?? Array(81).fill(0)}
+            size={size}
+            board={board ?? Array(size * size).fill(0)}
             highlight={state.highlight}
             noteMode={state.noteMode}
             onDigit={enterDigit}
           />
           <p className="hint">
-            Keys: 1–9 enter · N notes · arrows move · ⌫ erase · ⌘/Ctrl+Z undo
+            Keys: 1–{size} enter · N notes · arrows move · ⌫ erase · ⌘/Ctrl+Z undo
           </p>
         </div>
 
@@ -333,7 +358,12 @@ const Race: React.FC = () => {
           <aside className="rivals">
             <h3>Rivals</h3>
             {opponents.map((player) => (
-              <OpponentBoard key={player.id} player={player} timed={timed} />
+              <OpponentBoard
+                key={player.id}
+                player={player}
+                size={size}
+                timed={timed}
+              />
             ))}
           </aside>
         )}

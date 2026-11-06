@@ -38,6 +38,8 @@ export interface RoomView {
   hostId: string;
   phase: RoomPhase;
   difficulty: Difficulty;
+  // Board is size × size, using the digits 1..size.
+  size: number;
   mode: GameMode;
   durationMs: number;
   players: PlayerView[];
@@ -55,6 +57,8 @@ export interface SelfView {
   // correct entries. Null until the countdown ends.
   puzzle: number[] | null;
   board: number[] | null;
+  // Region id of each cell of the current puzzle (boxes, or jigsaw pieces).
+  regions: number[] | null;
   // Timed mode: input is locked until this server time after a mistake.
   lockedUntil: number | null;
 }
@@ -64,6 +68,7 @@ export type ClientMessage =
   | { type: "join"; code: string; name: string }
   | { type: "rejoin"; code: string; playerId: string; token: string }
   | { type: "setDifficulty"; difficulty: Difficulty }
+  | { type: "setSize"; size: number }
   | { type: "setMode"; mode: GameMode; durationMs: number }
   | { type: "start" }
   | { type: "guess"; cell: number; value: number }
