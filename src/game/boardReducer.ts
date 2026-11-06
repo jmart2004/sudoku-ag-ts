@@ -4,11 +4,11 @@
 
 import {
   bit,
-  completedUnits,
   DEFAULT_SIZE,
   Geometry,
   standardGeometry,
 } from "../shared/engine";
+import { CompletionKind } from "./sounds";
 
 const MAX_HISTORY = 200;
 
@@ -52,6 +52,43 @@ export type BoardAction =
       board: number[];
     }
   | { type: "clearFeedback" };
+
+export interface Completion {
+  kinds: CompletionKind[];
+  // Every cell in the completed lines and regions.
+  cells: number[];
+}
+
+// What filling `cell` completed on `board` (which already includes the
+// move): its row, column, region and, if it lies on one, a diagonal.
+// Diagonals aren't a sudoku rule, but filling one is still worth a cheer.
+export function completionOf(
+  geometry: Geometry,
+  board: number[],
+  cell: number
+): Completion {
+  const { size, units, unitsOf, rowOf, colOf } = geometry;
+  const full = (cells: number[]) => cells.every((c) => board[c] !== 0);
+  const [rowUnit, colUnit, regionUnit] = unitsOf[cell];
+  const found: [CompletionKind, number[]][] = [
+    ["row", units[rowUnit]],
+    ["column", units[colUnit]],
+    ["region", units[regionUnit]],
+  ];
+  const diagonals = [
+    geometry.cells.filter((c) => rowOf(c) === colOf(c)),
+    geometry.cells.filter((c) => rowOf(c) + colOf(c) === size - 1),
+  ];
+  for (const diagonal of diagonals) {
+    if (diagonal.includes(cell)) found.push(["diagonal", diagonal]);
+  }
+  const done = found.filter(([, cells]) => full(cells));
+  return {
+    // Both diagonals at once (the centre cell) still count as one sound.
+    kinds: Array.from(new Set(done.map(([kind]) => kind))),
+    cells: Array.from(new Set(done.flatMap(([, cells]) => cells))),
+  };
+}
 
 export const initialBoardState = (
   geometry: Geometry = standardGeometry(DEFAULT_SIZE)
@@ -196,9 +233,7 @@ export function boardReducer(
         feedbackId,
         highlight: value,
         justFilled: cell,
-        completed: Array.from(
-          new Set(completedUnits(state.geometry, filled, cell).flat())
-        ),
+        completed: completionOf(state.geometry, filled, cell).cells,
         wrong: null,
       };
     }

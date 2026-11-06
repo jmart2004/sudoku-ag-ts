@@ -33,6 +33,13 @@ first player to correctly fill every cell wins.
   Notes that a correct answer rules out are cleared automatically. Keyboard:
   `1`–`9` to enter a number, arrow keys to move, `N` or `Space` to toggle notes,
   `Backspace` to erase notes, `Ctrl/⌘+Z` to undo, `Esc` to deselect.
+- **Sound.** Every correct number plays its own note (1–9 climb a pentatonic
+  scale), and a wrong one a soft buzz. Completing a row, column, box or
+  diagonal each has its own sound (a rising arpeggio, a falling cascade, a bell
+  chord, a high sparkle), and several at once end on a bonus chime. There are
+  also countdown, board-done, win and out-of-lives cues. Everything is
+  synthesized with Web Audio, so there are no sound files, and there's a mute
+  button in the race bar.
 - **Light and dark themes,** following your system until you choose one.
 - **Refresh-safe.** Reloading the tab mid-race puts you back in your seat with
   your progress intact.

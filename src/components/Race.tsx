@@ -21,9 +21,11 @@ import {
 import { useGame } from "../game/GameContext";
 import {
   boardReducer,
+  completionOf,
   initialBoardState,
   planInput,
 } from "../game/boardReducer";
+import { soundPlayer } from "../game/sounds";
 import { formatTime, recordRace, recordTimedRun } from "../utility/Stats";
 import {
   geometryFor,
@@ -36,6 +38,7 @@ import RaceTrack from "./RaceTrack";
 import OpponentBoard from "./OpponentBoard";
 import Countdown from "./Countdown";
 import Results from "./Results";
+import MuteButton from "./MuteButton";
 
 const FEEDBACK_MS = 800;
 const BOARD_DONE_MS = 1200;
@@ -65,6 +68,8 @@ const Race: React.FC = () => {
     () => (regions ? geometryFor(regions) : standardGeometry(size)),
     [regions, size]
   );
+  const geometryRef = useRef(geometry);
+  geometryRef.current = geometry;
   boardRef.current = board ?? [];
   const me = room?.players.find((p) => p.id === self?.playerId);
   const phase = room?.phase;
@@ -114,8 +119,20 @@ const Race: React.FC = () => {
   useEffect(
     () =>
       onGuessResult((result) => {
+        if (!result.correct) {
+          soundPlayer.cue("wrong");
+        } else if (!result.completedBoard) {
+          // The server's new board may not have arrived yet; apply the move.
+          const filled = [...boardRef.current];
+          filled[result.cell] = result.value;
+          soundPlayer.correct(result.value);
+          soundPlayer.completions(
+            completionOf(geometryRef.current, filled, result.cell).kinds
+          );
+        }
         if (result.completedBoard && timed) {
           // A new board is on its way; skip the animations for the old one.
+          soundPlayer.cue("boardDone");
           setBoardDone((n) => (n ?? 0) + 1);
           return;
         }
@@ -145,6 +162,28 @@ const Race: React.FC = () => {
       );
     }
   }, [phase, raceId, room, me]);
+
+  // Game-flow sounds: 3-2-1, go, the result, and running out of lives.
+  const countdownSeconds =
+    phase === "countdown" && room?.startAt
+      ? Math.max(1, Math.ceil((room.startAt - now) / 1000))
+      : null;
+  useEffect(() => {
+    if (countdownSeconds !== null) soundPlayer.cue("tick");
+  }, [countdownSeconds]);
+  const prevPhase = useRef(phase);
+  useEffect(() => {
+    const was = prevPhase.current;
+    prevPhase.current = phase;
+    if (was === "countdown" && phase === "playing") soundPlayer.cue("go");
+    if (was === "playing" && phase === "finished") {
+      soundPlayer.cue(room?.winnerId === me?.id ? "win" : "finish");
+    }
+  }, [phase, room?.winnerId, me?.id]);
+  const eliminated = !!me?.eliminated;
+  useEffect(() => {
+    if (eliminated) soundPlayer.cue("lose");
+  }, [eliminated]);
 
   const select = useCallback(
     (cell: number) => dispatch({ type: "select", cell, board: boardRef.current }),
@@ -216,10 +255,7 @@ const Race: React.FC = () => {
   const finalStretch =
     timed && phase === "playing" && clock !== null && clock <= FINAL_STRETCH_MS;
   const lockSeconds = locked ? Math.ceil((self.lockedUntil! - now) / 1000) : 0;
-  const countdown =
-    phase === "countdown" && room.startAt
-      ? Math.max(1, Math.ceil((room.startAt - now) / 1000))
-      : null;
+  const countdown = countdownSeconds;
   const opponents = room.players.filter((p) => p.id !== me.id);
   const maxLives = STARTING_LIVES[room.difficulty];
 
@@ -238,6 +274,7 @@ const Race: React.FC = () => {
         >
           <FontAwesomeIcon icon={faArrowLeft} />
         </button>
+        <MuteButton />
         <span className={`chip chip-${room.difficulty}`}>
           {room.difficulty}
           {size !== 9 && ` · ${size}×${size}`}

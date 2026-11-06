@@ -1,5 +1,10 @@
 import { bit, generatePuzzle, geometryFor } from "../shared/engine";
-import { boardReducer, initialBoardState, planInput } from "./boardReducer";
+import {
+  boardReducer,
+  completionOf,
+  initialBoardState,
+  planInput,
+} from "./boardReducer";
 
 const { puzzle, solution } = generatePuzzle(9, "easy");
 const emptyCell = puzzle.indexOf(0);
@@ -130,8 +135,9 @@ test("completing a row reports its cells", () => {
     correct: true,
     board,
   });
-  // The row, column and box through cell 0 are all complete.
-  expect(state.completed).toHaveLength(21);
+  // The row, column and box through cell 0 (21 cells), plus the six main
+  // diagonal cells outside them.
+  expect(state.completed).toHaveLength(27);
 });
 
 test("a wrong guess points at the clashing cells", () => {
@@ -148,4 +154,23 @@ test("a wrong guess points at the clashing cells", () => {
     board: puzzle,
   });
   expect(state.wrong?.conflicts).toContain(givenCell);
+});
+
+test("completionOf names everything a move completes, diagonals included", () => {
+  const geometry = geometryFor(generatePuzzle(9, "easy").regions);
+  const board = [...solution];
+  // The centre cell lies on its row, column, box and both diagonals.
+  expect(completionOf(geometry, board, 40).kinds.sort()).toEqual(
+    ["column", "diagonal", "region", "row"]
+  );
+  // An edge cell that's on no diagonal.
+  expect(completionOf(geometry, board, 1).kinds).not.toContain("diagonal");
+  // Nothing is complete while its lines have a gap.
+  const gappy = [...solution];
+  gappy[0] = 0;
+  gappy[80] = 0;
+  gappy[8] = 0;
+  gappy[72] = 0;
+  gappy[40] = 0;
+  expect(completionOf(geometry, gappy, 40).kinds).toEqual([]);
 });
