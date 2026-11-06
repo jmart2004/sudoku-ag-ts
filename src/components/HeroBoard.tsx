@@ -1,10 +1,10 @@
 // Decorative board on the home page with four players' cells filling in.
 
 import React, { useEffect, useState } from "react";
-import { UNITS } from "../shared/engine";
+import { standardGeometry } from "../shared/engine";
 
 const COLORS = ["#f97316", "#3b82f6", "#22c55e", "#d946ef"];
-const BOXES = UNITS.slice(18);
+const BOXES = standardGeometry(9).units.slice(18);
 // A fixed, valid solution so the digits look real.
 const DIGITS =
   "534678912672195348198342567859761423426853791713924856961537284287419635345286179";

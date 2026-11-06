@@ -3,6 +3,7 @@
 import React, { memo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
+  faCheck,
   faFlagCheckered,
   faHeart,
   faSkull,
@@ -13,19 +14,24 @@ import Avatar from "./ui/Avatar";
 
 interface RaceTrackProps {
   players: PlayerView[];
-  toFill: number;
+  // Cells on the board (size²).
+  cellCount: number;
+  // Timed mode: runners show progress on their current board, plus a count.
+  timed: boolean;
   selfId: string;
   winnerId: string | null;
 }
 
 const RaceTrack: React.FC<RaceTrackProps> = ({
   players,
-  toFill,
+  cellCount,
+  timed,
   selfId,
   winnerId,
 }) => (
   <div className="track">
     {players.map((player) => {
+      const toFill = cellCount - player.givens.length;
       const percent = toFill ? (player.filled.length / toFill) * 100 : 0;
       return (
         <div
@@ -51,7 +57,12 @@ const RaceTrack: React.FC<RaceTrackProps> = ({
             <FontAwesomeIcon icon={faFlagCheckered} className="lane-flag" />
           </div>
           <span className="lane-status">
-            {player.id === winnerId ? (
+            {timed ? (
+              <span className="lane-boards" title="Boards completed">
+                <FontAwesomeIcon icon={faCheck} />
+                {player.boardsCompleted}
+              </span>
+            ) : player.id === winnerId ? (
               <FontAwesomeIcon icon={faTrophy} className="trophy" />
             ) : player.eliminated ? (
               <FontAwesomeIcon icon={faSkull} title="Out of lives" />

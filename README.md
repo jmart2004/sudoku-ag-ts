@@ -4,16 +4,27 @@ A multiplayer sudoku race. Create a lobby, share the 4-letter code (or invite
 link) with up to 3 friends, and everyone gets the **identical** board. The
 first player to correctly fill every cell wins.
 
-- **Lobbies of 1–4 players.** The host picks the difficulty and starts the race; a
-  lobby of one works as solo practice.
+- **Lobbies of 1–4 players.** The host picks the mode and difficulty and starts
+  the game; a lobby of one works as solo practice.
+- **Two modes:**
+  - **Race:** first to finish the board wins.
+  - **Time attack:** whoever completes the most boards in 3, 5 or 10 minutes
+    wins. Everyone gets the same boards in the same order, and finishing one
+    deals the next. Instead of costing a life, a wrong number locks your board
+    for 3 seconds.
+- **Board sizes from 4×4 to 9×9.** 4×4, 6×6 and 8×8 use rectangular boxes
+  (2×2, 2×3, 2×4) and 9×9 is classic. 5×5 and 7×7 can't be split into
+  rectangles, so they're **jigsaw** boards: irregular regions that each hold
+  every digit once, with a new layout for every puzzle.
 - **Fair, properly graded boards.** Every puzzle has exactly one solution, so
   no valid answer is ever marked wrong. Difficulty comes from the techniques
   the puzzle needs, not just how many clues it has: easy needs only singles,
   medium needs locked candidates, and hard needs pairs, triples or an X-wing.
-  No puzzle ever needs guessing.
+  No puzzle ever needs guessing. Small boards rarely need advanced
+  techniques, so their difficulty mostly comes from how many clues they have.
 - **Server-judged moves.** The solution never leaves the server. Each guess is
-  checked there. A wrong number costs a life, and a player who runs out of
-  lives is out of the race.
+  checked there. In a race, a wrong number costs a life, and a player who runs
+  out of lives is out.
 - **Live race view.** A race track shows every player's progress and lives.
   Each rival also gets a mini-board showing which cells they've filled, but
   never their numbers. Announcements pop up when someone reaches halfway, is
@@ -22,6 +33,13 @@ first player to correctly fill every cell wins.
   Notes that a correct answer rules out are cleared automatically. Keyboard:
   `1`–`9` to enter a number, arrow keys to move, `N` or `Space` to toggle notes,
   `Backspace` to erase notes, `Ctrl/⌘+Z` to undo, `Esc` to deselect.
+- **Sound.** Every correct number plays its own note (1–9 climb a pentatonic
+  scale), and a wrong one a soft buzz. Completing a row, column, box or
+  diagonal each has its own sound (a rising arpeggio, a falling cascade, a bell
+  chord, a high sparkle), and several at once end on a bonus chime. There are
+  also countdown, board-done, win and out-of-lives cues. Everything is
+  synthesized with Web Audio, so there are no sound files, and there's a mute
+  button in the race bar.
 - **Light and dark themes,** following your system until you choose one.
 - **Refresh-safe.** Reloading the tab mid-race puts you back in your seat with
   your progress intact.
@@ -55,7 +73,7 @@ won't work. To point the client at a game server somewhere else, set
 
 | Path | What's there |
 | --- | --- |
-| `src/shared/engine/` | Sudoku engine shared by client and server: grid geometry, solver, technique-based grader and generator |
+| `src/shared/engine/` | Sudoku engine shared by client and server: board geometry for every size (boxes and jigsaw regions), solver, technique-based grader and generator |
 | `src/shared/protocol.ts` | Client/server message types |
 | `server/` | Websocket server (`index.ts`), lobby/race rules (`rooms.ts`) and a background puzzle pool (`puzzlePool.ts`) |
 | `src/game/GameContext.tsx` | Client connection, reconnect and rejoin logic |

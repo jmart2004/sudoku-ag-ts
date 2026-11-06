@@ -1,7 +1,12 @@
-import { bit, generatePuzzle } from "../shared/engine";
-import { boardReducer, initialBoardState, planInput } from "./boardReducer";
+import { bit, generatePuzzle, geometryFor } from "../shared/engine";
+import {
+  boardReducer,
+  completionOf,
+  initialBoardState,
+  planInput,
+} from "./boardReducer";
 
-const { puzzle, solution } = generatePuzzle("easy");
+const { puzzle, solution } = generatePuzzle(9, "easy");
 const emptyCell = puzzle.indexOf(0);
 const givenCell = puzzle.findIndex((v) => v !== 0);
 
@@ -26,6 +31,41 @@ test("arrow movement wraps around the board", () => {
   });
   state = boardReducer(state, { type: "move", dRow: -1, dCol: -1, board: puzzle });
   expect(state.selected).toBe(80);
+});
+
+test("other sizes: movement wraps within the board and reset sizes the notes", () => {
+  const small = generatePuzzle(6, "easy");
+  const geometry = geometryFor(small.regions);
+  let state = boardReducer(initialBoardState(), { type: "reset", geometry });
+  expect(state.notes).toHaveLength(36);
+  state = boardReducer(state, { type: "select", cell: 0, board: small.puzzle });
+  state = boardReducer(state, {
+    type: "move",
+    dRow: -1,
+    dCol: -1,
+    board: small.puzzle,
+  });
+  expect(state.selected).toBe(35);
+});
+
+test("jigsaw boards: a wrong guess points at clashes in its region", () => {
+  const jig = generatePuzzle(5, "easy");
+  const geometry = geometryFor(jig.regions);
+  const cell = jig.puzzle.indexOf(0);
+  // A digit already given somewhere in the cell's region.
+  const regionPeer = geometry.peers[cell].find(
+    (p) => jig.regions[p] === jig.regions[cell] && jig.puzzle[p] !== 0
+  );
+  if (regionPeer === undefined) return;
+  let state = boardReducer(initialBoardState(), { type: "reset", geometry });
+  state = boardReducer(state, {
+    type: "guessResult",
+    cell,
+    value: jig.puzzle[regionPeer],
+    correct: false,
+    board: jig.puzzle,
+  });
+  expect(state.wrong?.conflicts).toContain(regionPeer);
 });
 
 test("planInput routes digits to guesses, notes or highlights", () => {
@@ -95,8 +135,9 @@ test("completing a row reports its cells", () => {
     correct: true,
     board,
   });
-  // The row, column and box through cell 0 are all complete.
-  expect(state.completed).toHaveLength(21);
+  // The row, column and box through cell 0 (21 cells), plus the six main
+  // diagonal cells outside them.
+  expect(state.completed).toHaveLength(27);
 });
 
 test("a wrong guess points at the clashing cells", () => {
@@ -113,4 +154,23 @@ test("a wrong guess points at the clashing cells", () => {
     board: puzzle,
   });
   expect(state.wrong?.conflicts).toContain(givenCell);
+});
+
+test("completionOf names everything a move completes, diagonals included", () => {
+  const geometry = geometryFor(generatePuzzle(9, "easy").regions);
+  const board = [...solution];
+  // The centre cell lies on its row, column, box and both diagonals.
+  expect(completionOf(geometry, board, 40).kinds.sort()).toEqual(
+    ["column", "diagonal", "region", "row"]
+  );
+  // An edge cell that's on no diagonal.
+  expect(completionOf(geometry, board, 1).kinds).not.toContain("diagonal");
+  // Nothing is complete while its lines have a gap.
+  const gappy = [...solution];
+  gappy[0] = 0;
+  gappy[80] = 0;
+  gappy[8] = 0;
+  gappy[72] = 0;
+  gappy[40] = 0;
+  expect(completionOf(geometry, gappy, 40).kinds).toEqual([]);
 });

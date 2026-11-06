@@ -2,11 +2,19 @@
 // the feedback around guesses. Pure, so it can be tested without React.
 // The board values themselves come from the server.
 
-import { bit, completedUnits, peersOf } from "../shared/engine";
+import {
+  bit,
+  DEFAULT_SIZE,
+  Geometry,
+  standardGeometry,
+} from "../shared/engine";
+import { CompletionKind } from "./sounds";
 
 const MAX_HISTORY = 200;
 
 export interface BoardState {
+  // Shape of the current board: size and regions.
+  geometry: Geometry;
   selected: number | null;
   noteMode: boolean;
   // Pencil marks per cell as bitmasks (bit n = digit n).
@@ -26,7 +34,7 @@ export interface BoardState {
 }
 
 export type BoardAction =
-  | { type: "reset" }
+  | { type: "reset"; geometry: Geometry }
   | { type: "select"; cell: number; board: number[] }
   | { type: "move"; dRow: number; dCol: number; board: number[] }
   | { type: "deselect" }
@@ -45,10 +53,50 @@ export type BoardAction =
     }
   | { type: "clearFeedback" };
 
-export const initialBoardState = (): BoardState => ({
+export interface Completion {
+  kinds: CompletionKind[];
+  // Every cell in the completed lines and regions.
+  cells: number[];
+}
+
+// What filling `cell` completed on `board` (which already includes the
+// move): its row, column, region and, if it lies on one, a diagonal.
+// Diagonals aren't a sudoku rule, but filling one is still worth a cheer.
+export function completionOf(
+  geometry: Geometry,
+  board: number[],
+  cell: number
+): Completion {
+  const { size, units, unitsOf, rowOf, colOf } = geometry;
+  const full = (cells: number[]) => cells.every((c) => board[c] !== 0);
+  const [rowUnit, colUnit, regionUnit] = unitsOf[cell];
+  const found: [CompletionKind, number[]][] = [
+    ["row", units[rowUnit]],
+    ["column", units[colUnit]],
+    ["region", units[regionUnit]],
+  ];
+  const diagonals = [
+    geometry.cells.filter((c) => rowOf(c) === colOf(c)),
+    geometry.cells.filter((c) => rowOf(c) + colOf(c) === size - 1),
+  ];
+  for (const diagonal of diagonals) {
+    if (diagonal.includes(cell)) found.push(["diagonal", diagonal]);
+  }
+  const done = found.filter(([, cells]) => full(cells));
+  return {
+    // Both diagonals at once (the centre cell) still count as one sound.
+    kinds: Array.from(new Set(done.map(([kind]) => kind))),
+    cells: Array.from(new Set(done.flatMap(([, cells]) => cells))),
+  };
+}
+
+export const initialBoardState = (
+  geometry: Geometry = standardGeometry(DEFAULT_SIZE)
+): BoardState => ({
+  geometry,
   selected: null,
   noteMode: false,
-  notes: Array(81).fill(0),
+  notes: Array(geometry.cellCount).fill(0),
   history: [],
   highlight: null,
   pending: {},
@@ -93,7 +141,7 @@ export function boardReducer(
 ): BoardState {
   switch (action.type) {
     case "reset":
-      return initialBoardState();
+      return initialBoardState(action.geometry);
 
     case "select":
       if (state.selected === action.cell) {
@@ -102,10 +150,11 @@ export function boardReducer(
       return selectCell(state, action.cell, action.board);
 
     case "move": {
-      const from = state.selected ?? 40;
-      const row = (Math.floor(from / 9) + action.dRow + 9) % 9;
-      const col = ((from % 9) + action.dCol + 9) % 9;
-      return selectCell(state, row * 9 + col, action.board);
+      const { size } = state.geometry;
+      const from = state.selected ?? Math.floor(state.geometry.cellCount / 2);
+      const row = (Math.floor(from / size) + action.dRow + size) % size;
+      const col = ((from % size) + action.dCol + size) % size;
+      return selectCell(state, row * size + col, action.board);
     }
 
     case "deselect":
@@ -163,7 +212,9 @@ export function boardReducer(
           wrong: {
             cell,
             value,
-            conflicts: peersOf(cell).filter((peer) => board[peer] === value),
+            conflicts: state.geometry.peers[cell].filter(
+              (peer) => board[peer] === value
+            ),
           },
         };
       }
@@ -174,7 +225,7 @@ export function boardReducer(
       // is automatic, so it isn't recorded for undo.
       const notes = [...state.notes];
       notes[cell] = 0;
-      for (const peer of peersOf(cell)) notes[peer] &= ~bit(value);
+      for (const peer of state.geometry.peers[cell]) notes[peer] &= ~bit(value);
       return {
         ...state,
         pending,
@@ -182,7 +233,7 @@ export function boardReducer(
         feedbackId,
         highlight: value,
         justFilled: cell,
-        completed: Array.from(new Set(completedUnits(filled, cell).flat())),
+        completed: completionOf(state.geometry, filled, cell).cells,
         wrong: null,
       };
     }

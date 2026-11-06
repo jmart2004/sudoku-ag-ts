@@ -1,10 +1,18 @@
 // The race itself: your board, the track, rivals' boards, countdown and results.
 
-import React, { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowLeft,
+  faCheck,
   faEraser,
   faHeart,
   faPencil,
@@ -13,19 +21,29 @@ import {
 import { useGame } from "../game/GameContext";
 import {
   boardReducer,
+  completionOf,
   initialBoardState,
   planInput,
 } from "../game/boardReducer";
-import { formatTime, recordRace } from "../utility/Stats";
-import { STARTING_LIVES } from "../shared/engine";
+import { soundPlayer } from "../game/sounds";
+import { formatTime, recordRace, recordTimedRun } from "../utility/Stats";
+import {
+  geometryFor,
+  STARTING_LIVES,
+  standardGeometry,
+} from "../shared/engine";
 import Board from "./Board";
 import NumberPad from "./NumberPad";
 import RaceTrack from "./RaceTrack";
 import OpponentBoard from "./OpponentBoard";
 import Countdown from "./Countdown";
 import Results from "./Results";
+import MuteButton from "./MuteButton";
 
 const FEEDBACK_MS = 800;
+const BOARD_DONE_MS = 1200;
+// The timed-mode clock turns urgent for the last stretch.
+const FINAL_STRETCH_MS = 30 * 1000;
 const ARROWS: Record<string, [number, number]> = {
   ArrowUp: [-1, 0],
   ArrowDown: [1, 0],
@@ -39,21 +57,46 @@ const Race: React.FC = () => {
   const navigate = useNavigate();
   const [state, dispatch] = useReducer(boardReducer, undefined, initialBoardState);
   const [now, setNow] = useState(() => Date.now() + clockOffset);
+  const [boardDone, setBoardDone] = useState<number | null>(null);
   const boardRef = useRef<number[]>([]);
 
   const board = self?.board ?? null;
+  const size = room?.size ?? 9;
+  // The current board's shape; jigsaw boards each have their own regions.
+  const regions = self?.regions;
+  const geometry = useMemo(
+    () => (regions ? geometryFor(regions) : standardGeometry(size)),
+    [regions, size]
+  );
+  const geometryRef = useRef(geometry);
+  geometryRef.current = geometry;
   boardRef.current = board ?? [];
   const me = room?.players.find((p) => p.id === self?.playerId);
   const phase = room?.phase;
-  const canPlay = phase === "playing" && !!me && !me.eliminated && !!board;
+  const timed = room?.mode === "timed";
+  const locked = !!self?.lockedUntil && self.lockedUntil > now;
+  const canPlay =
+    phase === "playing" && !!me && !me.eliminated && !!board && !locked;
 
-  // Fresh notes and selection for each new race.
   const raceId = room ? `${room.code}-${room.startAt}` : "";
   useEffect(() => {
-    dispatch({ type: "reset" });
     // The host taps Start at the bottom of the lobby; open the race at the top.
     window.scrollTo(0, 0);
   }, [raceId]);
+
+  // Fresh notes and selection for each new board (timed mode deals several).
+  const boardNumber = me?.boardsCompleted ?? 0;
+  const boardKey = timed ? boardNumber : 0;
+  useEffect(() => {
+    dispatch({ type: "reset", geometry });
+  }, [raceId, boardKey, geometry]);
+
+  // Celebrate each finished board in timed mode.
+  useEffect(() => {
+    if (!boardDone) return;
+    const timer = window.setTimeout(() => setBoardDone(null), BOARD_DONE_MS);
+    return () => window.clearTimeout(timer);
+  }, [boardDone]);
 
   useEffect(() => {
     if (phase === "finished") return;
@@ -75,21 +118,72 @@ const Race: React.FC = () => {
 
   useEffect(
     () =>
-      onGuessResult((result) =>
-        dispatch({ type: "guessResult", ...result, board: boardRef.current })
-      ),
-    [onGuessResult]
+      onGuessResult((result) => {
+        if (!result.correct) {
+          soundPlayer.cue("wrong");
+        } else if (!result.completedBoard) {
+          // The server's new board may not have arrived yet; apply the move.
+          const filled = [...boardRef.current];
+          filled[result.cell] = result.value;
+          soundPlayer.correct(result.value);
+          soundPlayer.completions(
+            completionOf(geometryRef.current, filled, result.cell).kinds
+          );
+        }
+        if (result.completedBoard && timed) {
+          // A new board is on its way; skip the animations for the old one.
+          soundPlayer.cue("boardDone");
+          setBoardDone((n) => (n ?? 0) + 1);
+          return;
+        }
+        dispatch({ type: "guessResult", ...result, board: boardRef.current });
+      }),
+    [onGuessResult, timed]
   );
 
   // Save the result to this browser's stats once the race ends.
   useEffect(() => {
     if (phase !== "finished" || !room || !me) return;
-    recordRace(
-      raceId,
-      room.difficulty,
-      room.winnerId === me.id ? me.finishedMs : null
-    );
+    if (room.mode === "timed") {
+      recordTimedRun(
+        raceId,
+        room.size,
+        room.difficulty,
+        room.durationMs,
+        me.boardsCompleted,
+        room.winnerId === me.id && room.players.length > 1
+      );
+    } else {
+      recordRace(
+        raceId,
+        room.size,
+        room.difficulty,
+        room.winnerId === me.id ? me.finishedMs : null
+      );
+    }
   }, [phase, raceId, room, me]);
+
+  // Game-flow sounds: 3-2-1, go, the result, and running out of lives.
+  const countdownSeconds =
+    phase === "countdown" && room?.startAt
+      ? Math.max(1, Math.ceil((room.startAt - now) / 1000))
+      : null;
+  useEffect(() => {
+    if (countdownSeconds !== null) soundPlayer.cue("tick");
+  }, [countdownSeconds]);
+  const prevPhase = useRef(phase);
+  useEffect(() => {
+    const was = prevPhase.current;
+    prevPhase.current = phase;
+    if (was === "countdown" && phase === "playing") soundPlayer.cue("go");
+    if (was === "playing" && phase === "finished") {
+      soundPlayer.cue(room?.winnerId === me?.id ? "win" : "finish");
+    }
+  }, [phase, room?.winnerId, me?.id]);
+  const eliminated = !!me?.eliminated;
+  useEffect(() => {
+    if (eliminated) soundPlayer.cue("lose");
+  }, [eliminated]);
 
   const select = useCallback(
     (cell: number) => dispatch({ type: "select", cell, board: boardRef.current }),
@@ -123,7 +217,7 @@ const Race: React.FC = () => {
         return;
       }
       const { key } = event;
-      if (key >= "1" && key <= "9") {
+      if (key >= "1" && key <= String(geometry.size)) {
         enterDigit(Number(key));
       } else if (key === "Backspace" || key === "Delete" || key === "0") {
         dispatch({ type: "clearNotes" });
@@ -140,23 +234,28 @@ const Race: React.FC = () => {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [enterDigit]);
+  }, [enterDigit, geometry.size]);
 
   if (!room || !self || !me) return null;
 
-  const puzzle = room.puzzle;
-  const toFill = puzzle ? puzzle.filter((v) => v === 0).length : 0;
+  const puzzle = self.puzzle;
   const winner = room.players.find((p) => p.id === room.winnerId);
-  const elapsed =
-    phase === "finished"
-      ? winner?.finishedMs ?? null
-      : room.startAt && phase === "playing"
-      ? now - room.startAt
-      : 0;
-  const countdown =
-    phase === "countdown" && room.startAt
-      ? Math.max(1, Math.ceil((room.startAt - now) / 1000))
-      : null;
+  // Race mode counts up; timed mode counts down to the end.
+  const clock = timed
+    ? phase === "finished"
+      ? 0
+      : phase === "playing" && room.endsAt
+      ? Math.max(0, room.endsAt - now)
+      : room.durationMs
+    : phase === "finished"
+    ? winner?.finishedMs ?? null
+    : room.startAt && phase === "playing"
+    ? now - room.startAt
+    : 0;
+  const finalStretch =
+    timed && phase === "playing" && clock !== null && clock <= FINAL_STRETCH_MS;
+  const lockSeconds = locked ? Math.ceil((self.lockedUntil! - now) / 1000) : 0;
+  const countdown = countdownSeconds;
   const opponents = room.players.filter((p) => p.id !== me.id);
   const maxLives = STARTING_LIVES[room.difficulty];
 
@@ -175,24 +274,42 @@ const Race: React.FC = () => {
         >
           <FontAwesomeIcon icon={faArrowLeft} />
         </button>
-        <span className={`chip chip-${room.difficulty}`}>{room.difficulty}</span>
-        <span className="race-timer">
-          {elapsed !== null ? formatTime(elapsed) : "—"}
+        <MuteButton />
+        <span className={`chip chip-${room.difficulty}`}>
+          {room.difficulty}
+          {size !== 9 && ` · ${size}×${size}`}
         </span>
-        <span className="hearts" aria-label={`${me.lives} lives left`}>
-          {Array.from({ length: maxLives }, (_, i) => (
-            <FontAwesomeIcon
-              key={i}
-              icon={faHeart}
-              className={i < me.lives ? "heart" : "heart lost"}
-            />
-          ))}
+        <span
+          className={`race-timer${finalStretch ? " urgent" : ""}`}
+          aria-label={timed ? "Time left" : "Time elapsed"}
+        >
+          {clock !== null ? formatTime(timed ? clock + 999 : clock) : "—"}
         </span>
+        {timed ? (
+          <span className="board-count" aria-label={`${boardNumber} boards done`}>
+            <FontAwesomeIcon icon={faCheck} />
+            {boardNumber}
+            <span className="board-count-label">
+              {boardNumber === 1 ? "board" : "boards"}
+            </span>
+          </span>
+        ) : (
+          <span className="hearts" aria-label={`${me.lives} lives left`}>
+            {Array.from({ length: maxLives }, (_, i) => (
+              <FontAwesomeIcon
+                key={i}
+                icon={faHeart}
+                className={i < me.lives ? "heart" : "heart lost"}
+              />
+            ))}
+          </span>
+        )}
       </header>
 
       <RaceTrack
         players={room.players}
-        toFill={toFill}
+        cellCount={size * size}
+        timed={timed}
         selfId={me.id}
         winnerId={room.winnerId}
       />
@@ -212,6 +329,19 @@ const Race: React.FC = () => {
               <div className="board board-placeholder" />
             )}
             {countdown !== null && <Countdown seconds={countdown} />}
+            {locked && phase === "playing" && (
+              <div className="board-overlay locked">
+                <strong>{lockSeconds}</strong>
+                <span>Wrong number, locked for a moment</span>
+              </div>
+            )}
+            {boardDone && (
+              <div key={boardDone} className="board-overlay board-done">
+                <FontAwesomeIcon icon={faCheck} className="board-done-icon" />
+                <strong>Board {boardNumber} done!</strong>
+                <span>Next one…</span>
+              </div>
+            )}
             {me.eliminated && phase === "playing" && (
               <div className="board-overlay out">
                 <strong>Out of lives</strong>
@@ -250,13 +380,14 @@ const Race: React.FC = () => {
           </div>
 
           <NumberPad
-            board={board ?? Array(81).fill(0)}
+            size={size}
+            board={board ?? Array(size * size).fill(0)}
             highlight={state.highlight}
             noteMode={state.noteMode}
             onDigit={enterDigit}
           />
           <p className="hint">
-            Keys: 1–9 enter · N notes · arrows move · ⌫ erase · ⌘/Ctrl+Z undo
+            Keys: 1–{size} enter · N notes · arrows move · ⌫ erase · ⌘/Ctrl+Z undo
           </p>
         </div>
 
@@ -264,7 +395,12 @@ const Race: React.FC = () => {
           <aside className="rivals">
             <h3>Rivals</h3>
             {opponents.map((player) => (
-              <OpponentBoard key={player.id} player={player} puzzle={puzzle} />
+              <OpponentBoard
+                key={player.id}
+                player={player}
+                size={size}
+                timed={timed}
+              />
             ))}
           </aside>
         )}
