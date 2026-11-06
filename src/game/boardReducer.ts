@@ -41,6 +41,10 @@ export type BoardAction =
   | { type: "toggleNoteMode" }
   | { type: "toggleNote"; digit: number }
   | { type: "clearNotes" }
+  // Select a cell without the click-again-to-deselect toggle.
+  | { type: "focus"; cell: number; board: number[] }
+  // Replace a cell's notes in one undoable step.
+  | { type: "setNotes"; cell: number; mask: number }
   | { type: "undo" }
   | { type: "highlight"; digit: number }
   | { type: "guessSent"; cell: number; value: number }
@@ -176,6 +180,16 @@ export function boardReducer(
       }
       const notes = [...state.notes];
       notes[state.selected] = 0;
+      return withNotes(state, notes);
+    }
+
+    case "focus":
+      return selectCell(state, action.cell, action.board);
+
+    case "setNotes": {
+      if (state.notes[action.cell] === action.mask) return state;
+      const notes = [...state.notes];
+      notes[action.cell] = action.mask;
       return withNotes(state, notes);
     }
 

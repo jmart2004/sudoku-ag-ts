@@ -33,6 +33,9 @@ first player to correctly fill every cell wins.
   Notes that a correct answer rules out are cleared automatically. Keyboard:
   `1`–`9` to enter a number, arrow keys to move, `N` or `Space` to toggle notes,
   `Backspace` to erase notes, `Ctrl/⌘+Z` to undo, `Esc` to deselect.
+- **What's missing, at a glance.** Right-click a cell (long-press on a phone,
+  or press `I`) to see which digits fit there, and what its row, column and
+  box still need. Tap a digit to enter it, or add them all as notes.
 - **Sound.** Every correct number plays its own note (1–9 climb a pentatonic
   scale), and a wrong one a soft buzz. Completing a row, column, box or
   diagonal each has its own sound (a rising arpeggio, a falling cascade, a bell

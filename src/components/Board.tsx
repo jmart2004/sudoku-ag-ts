@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import React, { memo, useRef } from "react";
 import { bit } from "../shared/engine";
 import { BoardState } from "../game/boardReducer";
 
@@ -9,7 +9,11 @@ interface BoardProps {
   // Show empty note grids so players can see where marks will go.
   notesVisible: boolean;
   onSelect: (cell: number) => void;
+  // Right-click, or long-press on touch screens.
+  onInspect: (cell: number, element: HTMLElement) => void;
 }
+
+const LONG_PRESS_MS = 450;
 
 const Board: React.FC<BoardProps> = ({
   board,
@@ -17,7 +21,15 @@ const Board: React.FC<BoardProps> = ({
   state,
   notesVisible,
   onSelect,
+  onInspect,
 }) => {
+  // Long-press support for touch screens, which have no right-click.
+  const press = useRef<{ timer: number; x: number; y: number } | null>(null);
+  const suppressClick = useRef(false);
+  const cancelPress = () => {
+    if (press.current) window.clearTimeout(press.current.timer);
+    press.current = null;
+  };
   const {
     geometry,
     selected,
@@ -76,7 +88,38 @@ const Board: React.FC<BoardProps> = ({
         aria-label={`Row ${row + 1}, column ${col + 1}: ${
           board[cell] || "empty"
         }`}
-        onClick={() => onSelect(cell)}
+        data-cell={cell}
+        onClick={() => {
+          if (suppressClick.current) {
+            suppressClick.current = false;
+            return;
+          }
+          onSelect(cell);
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          onInspect(cell, e.currentTarget);
+        }}
+        onPointerDown={(e) => {
+          if (e.pointerType === "mouse") return;
+          const element = e.currentTarget;
+          cancelPress();
+          press.current = {
+            x: e.clientX,
+            y: e.clientY,
+            timer: window.setTimeout(() => {
+              press.current = null;
+              suppressClick.current = true;
+              onInspect(cell, element);
+            }, LONG_PRESS_MS),
+          };
+        }}
+        onPointerMove={(e) => {
+          const p = press.current;
+          if (p && Math.hypot(e.clientX - p.x, e.clientY - p.y) > 10) cancelPress();
+        }}
+        onPointerUp={cancelPress}
+        onPointerCancel={cancelPress}
       >
         {value ? (
           <span className="cell-value">{value}</span>

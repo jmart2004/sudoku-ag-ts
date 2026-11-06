@@ -1540,6 +1540,134 @@ input:focus {
   animation: pop 0.3s ease-out;
 }
 
+/* Cell inspector (right-click / long-press) */
+
+.cell {
+  /* No iOS copy/lookup callout on long-press. */
+  -webkit-touch-callout: none;
+}
+
+.inspector {
+  position: fixed;
+  z-index: 35;
+  width: 268px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: rise 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.inspector-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.inspector-close {
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.inspector-fits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fit-digit {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1.5px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--entered);
+  font-size: 1.3rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s, background 0.15s;
+}
+
+.fit-digit:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.fit-digit:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.fit-digit:disabled {
+  cursor: default;
+}
+
+.inspector-none {
+  font-size: 0.85rem;
+  color: var(--wrong);
+  font-weight: 600;
+}
+
+.inspector-lines {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 6px 10px;
+  margin: -4px 0 0;
+}
+
+.inspector-lines dt {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.inspector-lines dd {
+  margin: 0;
+}
+
+.inspect-digits {
+  display: flex;
+  gap: 3px;
+}
+
+.inspect-digits span {
+  width: 17px;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.inspect-digits .missing {
+  color: var(--entered);
+  background: var(--accent-soft);
+}
+
+.inspect-digits .present {
+  color: var(--border);
+}
+
+.inspect-complete {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--easy);
+}
+
+/* Separate the "Still needed" lines from the digits that fit above them. */
+.inspector-fits + .eyebrow,
+.inspector-none + .eyebrow {
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
 /* Stats size tabs */
 
 .size-tabs {

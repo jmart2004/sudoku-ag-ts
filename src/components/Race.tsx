@@ -39,6 +39,7 @@ import OpponentBoard from "./OpponentBoard";
 import Countdown from "./Countdown";
 import Results from "./Results";
 import MuteButton from "./MuteButton";
+import CellInspector, { InspectTarget } from "./CellInspector";
 
 const FEEDBACK_MS = 800;
 const BOARD_DONE_MS = 1200;
@@ -185,6 +186,16 @@ const Race: React.FC = () => {
     if (eliminated) soundPlayer.cue("lose");
   }, [eliminated]);
 
+  const [inspect, setInspect] = useState<InspectTarget | null>(null);
+  const closeInspector = useCallback(() => setInspect(null), []);
+  const openInspector = useCallback((cell: number, element: HTMLElement) => {
+    const { top, left, bottom, right } = element.getBoundingClientRect();
+    dispatch({ type: "focus", cell, board: boardRef.current });
+    setInspect({ cell, rect: { top, left, bottom, right } });
+  }, []);
+  // A new board, or the game ending, closes the panel.
+  useEffect(() => setInspect(null), [raceId, boardKey, phase]);
+
   const select = useCallback(
     (cell: number) => dispatch({ type: "select", cell, board: boardRef.current }),
     []
@@ -224,6 +235,11 @@ const Race: React.FC = () => {
       } else if (key === "n" || key === "N" || key === " ") {
         event.preventDefault();
         dispatch({ type: "toggleNoteMode" });
+      } else if ((key === "i" || key === "?") && state.selected !== null) {
+        const element = document.querySelector<HTMLElement>(
+          `[data-cell="${state.selected}"]`
+        );
+        if (element) openInspector(state.selected, element);
       } else if (key === "Escape") {
         dispatch({ type: "deselect" });
       } else if (key in ARROWS) {
@@ -234,7 +250,7 @@ const Race: React.FC = () => {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [enterDigit, geometry.size]);
+  }, [enterDigit, geometry.size, state.selected, openInspector]);
 
   if (!room || !self || !me) return null;
 
@@ -324,6 +340,7 @@ const Race: React.FC = () => {
                 state={state}
                 notesVisible={state.noteMode && canPlay}
                 onSelect={select}
+                onInspect={openInspector}
               />
             ) : (
               <div className="board board-placeholder" />
@@ -388,6 +405,7 @@ const Race: React.FC = () => {
           />
           <p className="hint">
             Keys: 1–{size} enter · N notes · arrows move · ⌫ erase · ⌘/Ctrl+Z undo
+            · right-click or I: what's missing
           </p>
         </div>
 
@@ -406,6 +424,26 @@ const Race: React.FC = () => {
         )}
       </div>
 
+      {inspect && board && (
+        <CellInspector
+          geometry={geometry}
+          board={board}
+          target={inspect}
+          canPlay={canPlay && !(inspect.cell in state.pending)}
+          onPick={(digit) => {
+            if (board[inspect.cell] === 0) {
+              dispatch({ type: "guessSent", cell: inspect.cell, value: digit });
+              guess(inspect.cell, digit);
+            }
+            closeInspector();
+          }}
+          onPencil={(mask) => {
+            dispatch({ type: "setNotes", cell: inspect.cell, mask });
+            closeInspector();
+          }}
+          onClose={closeInspector}
+        />
+      )}
       {phase === "finished" && <Results />}
     </div>
   );
