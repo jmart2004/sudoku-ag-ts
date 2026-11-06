@@ -24,3 +24,6 @@ yarn-error.log*
 
 # Local recordings of test games (videos and Playwright traces)
 /multiplayer-traces
+
+# Android build output
+/dist

@@ -4,6 +4,7 @@ import { GameProvider } from "./game/GameContext";
 import AppShell from "./components/AppShell";
 import { SettingsProvider } from "./components/SettingsDialog";
 import Toasts from "./components/Toasts";
+import NativeBridge from "./components/NativeBridge";
 import HomePage from "./pages/HomePage";
 import RoomPage from "./pages/RoomPage";
 import StatsPage from "./pages/StatsPage";
@@ -22,6 +23,7 @@ const App: React.FC = () => {
           </AppShell>
         </SettingsProvider>
         <Toasts />
+        <NativeBridge />
       </Router>
     </GameProvider>
   );

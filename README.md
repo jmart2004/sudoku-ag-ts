@@ -90,6 +90,40 @@ service sleeps after 15 minutes without visitors, and the first visit after
 that takes about a minute to wake it. Lobbies are kept in memory, so a sleep or
 restart ends any game in progress.
 
+## Android app
+
+The Android app is the same React app packaged with
+[Capacitor](https://capacitorjs.com). It connects to the website's game
+server, so app and browser players join the same lobbies with the same codes.
+Everything the site does works in the app. On top of that, the invite button
+opens Android's share sheet, the back button navigates (and exits from the
+home screen), the status bar follows the theme, and tapping an invite link
+can open the app.
+
+```bash
+SITE_URL=https://your-site.onrender.com npm run android:apk
+```
+
+This builds the app against that site and writes `dist/sudoku-race.apk`, a
+debug build you can copy to a phone and install (allow installs from unknown
+sources when asked). `SITE_URL` defaults to
+`https://sudoku-race.onrender.com`. It needs JDK 21 and the Android SDK; the
+script finds both where Android Studio installs them, or uses `JAVA_HOME` and
+`ANDROID_HOME`. `npm run android:open` opens the project in Android Studio
+instead, for running on an emulator or making a signed release build.
+
+- **Invite links open the app** once the site vouches for it. Set
+  `ANDROID_CERT_SHA256` on the server to the app's signing certificate
+  fingerprint (shown by `cd android && ./gradlew signingReport`); the server
+  then publishes `/.well-known/assetlinks.json`. Without it, Android asks
+  which app to open links with, or opens them in the browser.
+- **Testing against a local server:** `SITE_URL=http://192.168.1.20:3000`
+  (your computer's address, with `npm run serve` running) works from a phone
+  on the same Wi-Fi.
+- **Icons:** `node scripts/make-icons.mjs` draws the logo into `assets/` and
+  `public/`, and `npm run android:icons` turns those into launcher icons and
+  splash screens.
+
 ## Project layout
 
 | Path | What's there |
@@ -100,6 +134,8 @@ restart ends any game in progress.
 | `src/game/GameContext.tsx` | Client connection, reconnect and rejoin logic |
 | `src/game/boardReducer.ts` | Board interaction state: selection, notes, undo, guess feedback |
 | `src/pages/`, `src/components/` | Home, lobby, race and results UI |
+| `src/platform.ts`, `src/components/NativeBridge.tsx` | Website/app differences: server address, invite links, Android back button and status bar |
+| `android/`, `capacitor.config.ts`, `scripts/android.mjs` | Android project and its build script |
 
 ## Scripts
 
@@ -107,3 +143,5 @@ restart ends any game in progress.
 - `npm run serve`: production build served by the game server
 - `npm test`: unit tests
 - `npm run typecheck`: type-check the client and the server
+- `npm run android:apk`: build the Android APK into `dist/`
+- `npm run android:open`: open the Android project in Android Studio
