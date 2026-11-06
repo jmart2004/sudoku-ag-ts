@@ -9,8 +9,8 @@ interface BoardProps {
   // Show empty note grids so players can see where marks will go.
   notesVisible: boolean;
   onSelect: (cell: number) => void;
-  // Right-click, or long-press on touch screens.
-  onInspect: (cell: number, element: HTMLElement) => void;
+  // Right-click, or long-press on touch screens. Omit to leave both alone.
+  onInspect?: (cell: number, element: HTMLElement) => void;
 }
 
 const LONG_PRESS_MS = 450;
@@ -39,6 +39,7 @@ const Board: React.FC<BoardProps> = ({
     notes,
     justFilled,
     completed,
+    completedDigit,
   } = state;
   const { size, regions, rowOf, colOf, digits } = geometry;
   const peers = new Set(selected === null ? [] : geometry.peers[selected]);
@@ -69,6 +70,7 @@ const Board: React.FC<BoardProps> = ({
       conflicts.has(cell) ? "conflict" : "",
       cell === justFilled ? "pop" : "",
       wave.has(cell) ? "wave" : "",
+      completedDigit && board[cell] === completedDigit ? "digit-done" : "",
     ]
       .filter(Boolean)
       .join(" ");
@@ -81,9 +83,14 @@ const Board: React.FC<BoardProps> = ({
         key={cell}
         className={classNames}
         style={
-          wave.has(cell)
-            ? ({ "--wave-delay": `${distance * 35}ms` } as React.CSSProperties)
-            : undefined
+          {
+            "--wave-delay": wave.has(cell) ? `${distance * 35}ms` : undefined,
+            // Each copy of a completed number shines in turn, top to bottom.
+            "--shine-delay":
+              completedDigit && board[cell] === completedDigit
+                ? `${row * 60}ms`
+                : undefined,
+          } as React.CSSProperties
         }
         aria-label={`Row ${row + 1}, column ${col + 1}: ${
           board[cell] || "empty"
@@ -97,11 +104,12 @@ const Board: React.FC<BoardProps> = ({
           onSelect(cell);
         }}
         onContextMenu={(e) => {
+          if (!onInspect) return;
           e.preventDefault();
           onInspect(cell, e.currentTarget);
         }}
         onPointerDown={(e) => {
-          if (e.pointerType === "mouse") return;
+          if (e.pointerType === "mouse" || !onInspect) return;
           const element = e.currentTarget;
           cancelPress();
           press.current = {

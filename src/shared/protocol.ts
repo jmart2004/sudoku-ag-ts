@@ -40,6 +40,8 @@ export interface RoomView {
   difficulty: Difficulty;
   // Board is size × size, using the digits 1..size.
   size: number;
+  // Whether players may use the what's-missing helper (right-click / long-press).
+  helper: boolean;
   mode: GameMode;
   durationMs: number;
   players: PlayerView[];
@@ -69,6 +71,7 @@ export type ClientMessage =
   | { type: "rejoin"; code: string; playerId: string; token: string }
   | { type: "setDifficulty"; difficulty: Difficulty }
   | { type: "setSize"; size: number }
+  | { type: "setHelper"; enabled: boolean }
   | { type: "setMode"; mode: GameMode; durationMs: number }
   | { type: "start" }
   | { type: "guess"; cell: number; value: number }

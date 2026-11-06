@@ -4,7 +4,16 @@
 // given start time, so the same code plays live and renders offline (which
 // is how the sounds are tested and previewed).
 
-export type CompletionKind = "row" | "column" | "region" | "diagonal";
+// "digit": every copy of a number is now on the board.
+export type CompletionKind = "row" | "column" | "region" | "diagonal" | "digit";
+
+export const COMPLETION_KINDS: CompletionKind[] = [
+  "row",
+  "column",
+  "region",
+  "diagonal",
+  "digit",
+];
 
 type Ctx = BaseAudioContext;
 
@@ -102,48 +111,83 @@ export const sounds = {
     }
   },
 
+  // The completion motifs. Each takes a pitch ratio and a level so the
+  // combination sounds can transpose and layer them.
+
   // Rising left to right, like sweeping along the row.
-  row(ctx: Ctx, out: AudioNode, t: number) {
-    [C5, E5, G5, C6].forEach((f, i) => pluck(ctx, out, f, t + i * 0.065, 0.15));
+  row(ctx: Ctx, out: AudioNode, t: number, p = 1, g = 1) {
+    [C5, E5, G5, C6].forEach((f, i) =>
+      pluck(ctx, out, f * p, t + i * 0.065, 0.15 * g)
+    );
   },
 
   // Falling top to bottom, a quick cascade.
-  column(ctx: Ctx, out: AudioNode, t: number) {
+  column(ctx: Ctx, out: AudioNode, t: number, p = 1, g = 1) {
     [G6, E6, C6, G5].forEach((f, i) =>
       tone(ctx, out, {
-        freq: f,
+        freq: f * p,
         start: t + i * 0.055,
         duration: 0.35,
         type: "sine",
-        gain: 0.14,
+        gain: 0.14 * g,
       })
     );
   },
 
   // Struck all at once: a chord of bells.
-  region(ctx: Ctx, out: AudioNode, t: number) {
-    [C5, E5, G5].forEach((f) => bell(ctx, out, f, t, 0.09));
+  region(ctx: Ctx, out: AudioNode, t: number, p = 1, g = 1) {
+    [C5, E5, G5].forEach((f) => bell(ctx, out, f * p, t, 0.09 * g));
   },
 
   // A high glittering run.
-  diagonal(ctx: Ctx, out: AudioNode, t: number) {
+  diagonal(ctx: Ctx, out: AudioNode, t: number, p = 1, g = 1) {
     PENTATONIC.slice(5, 12).forEach((f, i) =>
       tone(ctx, out, {
-        freq: f,
+        freq: f * p,
         start: t + i * 0.035,
         duration: 0.3,
-        gain: 0.1,
+        gain: 0.1 * g,
       })
     );
-    tone(ctx, out, { freq: C7 * 2, start: t + 0.25, duration: 0.5, gain: 0.04 });
+    tone(ctx, out, {
+      freq: C7 * 2 * p,
+      start: t + 0.25,
+      duration: 0.5,
+      gain: 0.04 * g,
+    });
   },
 
-  // Several completions from one move play in turn, then a bonus chime.
+  // Every copy of a number placed: a bright two-note "collect" with a
+  // shimmer, like picking up a coin.
+  digit(ctx: Ctx, out: AudioNode, t: number, p = 1, g = 1) {
+    tone(ctx, out, {
+      freq: 987.77 * p,
+      start: t,
+      duration: 0.09,
+      type: "square",
+      gain: 0.07 * g,
+      cutoff: 3500,
+    });
+    tone(ctx, out, {
+      freq: 1318.51 * p,
+      start: t + 0.08,
+      duration: 0.45,
+      type: "square",
+      gain: 0.07 * g,
+      cutoff: 3500,
+    });
+    tone(ctx, out, {
+      freq: 2637.02 * p,
+      start: t + 0.1,
+      duration: 0.5,
+      gain: 0.04 * g,
+    });
+  },
+
+  // One completion plays its motif; a combination plays its own sound.
   completions(ctx: Ctx, out: AudioNode, t: number, kinds: CompletionKind[]) {
-    kinds.forEach((kind, i) => sounds[kind](ctx, out, t + i * 0.16));
-    if (kinds.length > 1) {
-      bell(ctx, out, C7, t + kinds.length * 0.16 + 0.05, 0.07);
-    }
+    if (kinds.length === 1) sounds[kinds[0]](ctx, out, t);
+    else if (kinds.length > 1) combination(ctx, out, t, kinds);
   },
 
   // Timed mode: a board finished, the next is coming.
@@ -191,7 +235,74 @@ export const sounds = {
   },
 };
 
-export type SoundName = Exclude<keyof typeof sounds, "correct" | "completions">;
+export type SoundName = Exclude<
+  keyof typeof sounds,
+  "correct" | "completions" | CompletionKind
+>;
+
+// Every combination of two or more completions has its own sound: the
+// motifs of the kinds involved, layered and transposed into a key, then a
+// finale that grows with how many completed at once (2: an open fifth,
+// 3: a triad, 4: a ninth chord, 5: a two-octave sweep). Combinations of the
+// same size share a finale, so each of them gets a different key; together
+// with the different layers, no two combinations sound alike.
+const KEYS = [0, 5, -3, 2, 7, -5, 4, -2, 3, -4, 6, 1];
+
+export function comboKey(kinds: CompletionKind[]): number {
+  const maskOf = (ks: CompletionKind[]) =>
+    ks.reduce((m, k) => m | (1 << COMPLETION_KINDS.indexOf(k)), 0);
+  const mask = maskOf(kinds);
+  // Position among all combinations with the same number of kinds.
+  let index = 0;
+  for (let other = 1; other < mask; other++) {
+    if (popcount(other) === kinds.length) index++;
+  }
+  return KEYS[index % KEYS.length];
+}
+
+const popcount = (n: number) => {
+  let count = 0;
+  for (let m = n; m; m &= m - 1) count++;
+  return count;
+};
+
+function combination(
+  ctx: Ctx,
+  out: AudioNode,
+  t: number,
+  kinds: CompletionKind[]
+) {
+  const ordered = COMPLETION_KINDS.filter((k) => kinds.includes(k));
+  const p = Math.pow(2, comboKey(ordered) / 12);
+  // Layers enter 45ms apart, quieter as more stack up.
+  const level = 0.85 / Math.sqrt(ordered.length - 0.5);
+  ordered.forEach((kind, i) => sounds[kind](ctx, out, t + i * 0.045, p, level));
+
+  const finale = t + 0.12 + ordered.length * 0.06;
+  const root = C6 * p;
+  const at = (semitones: number) => root * Math.pow(2, semitones / 12);
+  switch (ordered.length) {
+    case 2:
+      [0, 7, 12].forEach((s) => bell(ctx, out, at(s), finale, 0.06));
+      break;
+    case 3:
+      [0, 4, 7].forEach((s, i) => pluck(ctx, out, at(s), finale + i * 0.06, 0.1));
+      [0, 4, 7, 12].forEach((s) => bell(ctx, out, at(s), finale + 0.2, 0.055));
+      break;
+    case 4:
+      [0, 4, 7, 11, 14].forEach((s, i) =>
+        pluck(ctx, out, at(s), finale + i * 0.05, 0.09)
+      );
+      [0, 7, 14, 16].forEach((s) => bell(ctx, out, at(s), finale + 0.28, 0.055));
+      break;
+    default:
+      [-12, -8, -5, 0, 4, 7, 12, 16, 19, 24].forEach((s, i) =>
+        pluck(ctx, out, at(s), finale + i * 0.045, 0.09)
+      );
+      [0, 4, 7, 12, 19].forEach((s) => bell(ctx, out, at(s), finale + 0.5, 0.055));
+      tone(ctx, out, { freq: at(31), start: finale + 0.5, duration: 1.2, gain: 0.03 });
+  }
+}
 
 // Master chain: a compressor keeps stacked sounds from clipping.
 export function createOutput(ctx: Ctx, volume = 1.5): AudioNode {

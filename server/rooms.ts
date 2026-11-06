@@ -67,6 +67,7 @@ export class Room {
   phase: RoomPhase = "lobby";
   difficulty: Difficulty;
   size = DEFAULT_SIZE;
+  helper = true;
   mode: GameMode = "race";
   durationMs = TIMED_DURATIONS_MS[1];
   players: Player[] = [];
@@ -153,6 +154,11 @@ export class Room {
       throw new GameError("Unknown difficulty.");
     }
     this.difficulty = difficulty;
+  }
+
+  setHelper(playerId: string, enabled: boolean) {
+    this.requireLobbyHost(playerId);
+    this.helper = enabled === true;
   }
 
   setSize(playerId: string, size: number) {
@@ -353,6 +359,7 @@ export class Room {
       phase: this.phase,
       difficulty: this.difficulty,
       size: this.size,
+      helper: this.helper,
       mode: this.mode,
       durationMs: this.durationMs,
       players: this.players.map(

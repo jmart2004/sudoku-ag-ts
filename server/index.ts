@@ -141,6 +141,9 @@ function handle(conn: Connection, msg: ClientMessage) {
     case "setDifficulty":
       room.setDifficulty(playerId, msg.difficulty);
       break;
+    case "setHelper":
+      room.setHelper(playerId, msg.enabled);
+      break;
     case "setSize":
       room.setSize(playerId, msg.size);
       break;

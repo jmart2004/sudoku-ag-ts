@@ -4,7 +4,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPencil, faXmark } from "@fortawesome/free-solid-svg-icons";
-import { bit, Geometry } from "../shared/engine";
+import { bit, Geometry, isJigsawSize } from "../shared/engine";
 
 export interface InspectTarget {
   cell: number;
@@ -101,7 +101,7 @@ const CellInspector: React.FC<CellInspectorProps> = ({
     };
   }, [onClose]);
 
-  const regionName = geometry.size === 5 || geometry.size === 7 ? "Region" : "Box";
+  const regionName = isJigsawSize(geometry.size) ? "Region" : "Box";
 
   return (
     <div

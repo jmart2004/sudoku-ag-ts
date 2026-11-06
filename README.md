@@ -35,11 +35,17 @@ first player to correctly fill every cell wins.
   `Backspace` to erase notes, `Ctrl/⌘+Z` to undo, `Esc` to deselect.
 - **What's missing, at a glance.** Right-click a cell (long-press on a phone,
   or press `I`) to see which digits fit there, and what its row, column and
-  box still need. Tap a digit to enter it, or add them all as notes.
+  box still need. Tap a digit to enter it, or add them all as notes. The host
+  can switch this helper off in the lobby's options so everyone races without
+  it.
 - **Sound.** Every correct number plays its own note (1–9 climb a pentatonic
-  scale), and a wrong one a soft buzz. Completing a row, column, box or
-  diagonal each has its own sound (a rising arpeggio, a falling cascade, a bell
-  chord, a high sparkle), and several at once end on a bonus chime. There are
+  scale), and a wrong one a soft buzz. Completing a row, column, box,
+  diagonal or number (all of its copies placed) each has its own sound: a
+  rising arpeggio, a falling cascade, a bell chord, a high sparkle, a coin-like
+  "collect". All 26 combinations of two or more have their own sound too,
+  with the parts layered in a key of their own and a finale that grows with
+  the size of the combo. A badge names it ("Triple! Row + Column + All 7s"),
+  and a completed number's cells shine gold. There are
   also countdown, board-done, win and out-of-lives cues. Everything is
   synthesized with Web Audio, so there are no sound files, and there's a mute
   button in the race bar.
