@@ -4,6 +4,7 @@ import React, { memo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCheck,
+  faFlag,
   faFlagCheckered,
   faHeart,
   faSkull,
@@ -18,6 +19,8 @@ interface RaceTrackProps {
   cellCount: number;
   // Timed mode: runners show progress on their current board, plus a count.
   timed: boolean;
+  // Turf war: runners show their share of every point on the board.
+  turfTotal?: number;
   selfId: string;
   winnerId: string | null;
 }
@@ -26,13 +29,18 @@ const RaceTrack: React.FC<RaceTrackProps> = ({
   players,
   cellCount,
   timed,
+  turfTotal,
   selfId,
   winnerId,
 }) => (
   <div className="track">
     {players.map((player) => {
       const toFill = cellCount - player.givens.length;
-      const percent = toFill ? (player.filled.length / toFill) * 100 : 0;
+      const percent = turfTotal
+        ? (player.score / turfTotal) * 100
+        : toFill
+        ? (player.filled.length / toFill) * 100
+        : 0;
       return (
         <div
           key={player.id}
@@ -57,7 +65,15 @@ const RaceTrack: React.FC<RaceTrackProps> = ({
             <FontAwesomeIcon icon={faFlagCheckered} className="lane-flag" />
           </div>
           <span className="lane-status">
-            {timed ? (
+            {turfTotal ? (
+              <span className="lane-boards" title="Points">
+                <FontAwesomeIcon
+                  icon={player.id === winnerId ? faTrophy : faFlag}
+                  className={player.id === winnerId ? "trophy" : undefined}
+                />
+                {player.score}
+              </span>
+            ) : timed ? (
               <span className="lane-boards" title="Boards completed">
                 <FontAwesomeIcon icon={faCheck} />
                 {player.boardsCompleted}

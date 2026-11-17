@@ -133,6 +133,12 @@ const Lobby: React.FC = () => {
           onChange={setMode}
           disabled={!isHost}
         />
+        {room.mode === "turf" && room.players.length === 1 && (
+          <p className="muted small">
+            Turf war needs a rival to fight over the board. Invite someone
+            before you start.
+          </p>
+        )}
       </section>
 
       <section className="panel">
@@ -169,6 +175,8 @@ const Lobby: React.FC = () => {
             <FontAwesomeIcon icon={faPlay} />
             {room.mode === "timed"
               ? `Start ${room.durationMs / 60000}-minute time attack`
+              : room.mode === "turf"
+              ? "Start turf war"
               : room.players.length === 1
               ? "Start solo practice"
               : "Start race"}

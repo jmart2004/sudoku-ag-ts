@@ -10,6 +10,8 @@ import Confetti from "./Confetti";
 const PLACES = ["1st", "2nd", "3rd", "4th"];
 
 const boardsLabel = (n: number) => `${n} board${n === 1 ? "" : "s"}`;
+const pointsLabel = (n: number) => `${n} point${n === 1 ? "" : "s"}`;
+const linesLabel = (n: number) => `${n} line${n === 1 ? "" : "s"}`;
 
 const Results: React.FC = () => {
   const { room, self, backToLobby, leaveLobby } = useGame();
@@ -18,6 +20,8 @@ const Results: React.FC = () => {
   if (!room || !self || !room.standings) return null;
 
   const timed = room.mode === "timed";
+  const turf = room.mode === "turf";
+  const totalScore = room.players.reduce((sum, p) => sum + p.score, 0);
   const isHost = room.hostId === self.playerId;
   const youWon = room.winnerId === self.playerId;
   const winner = room.players.find((p) => p.id === room.winnerId);
@@ -44,13 +48,22 @@ const Results: React.FC = () => {
               </div>
               <h2>{youWon ? "You won!" : `${winner.name} wins`}</h2>
               <p className="muted">
-                {timed
+                {turf
+                  ? `${pointsLabel(winner.score)} · ${linesLabel(
+                      winner.captures
+                    )} captured`
+                  : timed
                   ? `Time's up · ${boardsLabel(winner.boardsCompleted)} in ${formatTime(
                       room.durationMs
                     )}`
                   : `Solved in ${formatTime(winner.finishedMs ?? 0)}`}
                 {!youWon && yourPlace >= 0 && ` · you placed ${PLACES[yourPlace]}`}
               </p>
+            </>
+          ) : turf ? (
+            <>
+              <h2>No winner</h2>
+              <p className="muted">Nobody claimed a single cell.</p>
             </>
           ) : timed ? (
             <>
@@ -70,7 +83,11 @@ const Results: React.FC = () => {
             const player = room.players.find((p) => p.id === id);
             if (!player) return null;
             const toFill = room.size * room.size - player.givens.length;
-            const percent = toFill
+            const percent = turf
+              ? totalScore
+                ? Math.round((player.score / totalScore) * 100)
+                : 0
+              : toFill
               ? Math.round((player.filled.length / toFill) * 100)
               : 0;
             return (
@@ -94,7 +111,18 @@ const Results: React.FC = () => {
                       {boardsLabel(player.boardsCompleted)}
                     </strong>
                   )}
-                  {timed ? ` + ${percent}%` : player.eliminated ? "out" : `${percent}%`}
+                  {turf && (
+                    <strong className="standing-boards">
+                      {pointsLabel(player.score)}
+                    </strong>
+                  )}
+                  {turf
+                    ? ` · ${linesLabel(player.captures)}`
+                    : timed
+                    ? ` + ${percent}%`
+                    : player.eliminated
+                    ? "out"
+                    : `${percent}%`}
                   {" · "}
                   {player.mistakes}✗
                 </span>

@@ -14,11 +14,13 @@ import {
   faArrowLeft,
   faCheck,
   faEraser,
+  faFlag,
   faHeart,
   faPencil,
   faRotateLeft,
 } from "@fortawesome/free-solid-svg-icons";
 import { useGame } from "../game/GameContext";
+import { TURF_CAPTURE_POINTS, TURF_CELL_POINTS } from "../shared/protocol";
 import {
   boardReducer,
   completionOf,
@@ -59,6 +61,8 @@ const Race: React.FC = () => {
   const [state, dispatch] = useReducer(boardReducer, undefined, initialBoardState);
   const [now, setNow] = useState(() => Date.now() + clockOffset);
   const [boardDone, setBoardDone] = useState<number | null>(null);
+  // Turf war: the points from your latest claim, shown floating by the score.
+  const [gain, setGain] = useState<{ id: number; points: number } | null>(null);
   const boardRef = useRef<number[]>([]);
 
   const board = self?.board ?? null;
@@ -75,6 +79,7 @@ const Race: React.FC = () => {
   const me = room?.players.find((p) => p.id === self?.playerId);
   const phase = room?.phase;
   const timed = room?.mode === "timed";
+  const turf = room?.mode === "turf";
   const locked = !!self?.lockedUntil && self.lockedUntil > now;
   const canPlay =
     phase === "playing" && !!me && !me.eliminated && !!board && !locked;
@@ -124,6 +129,15 @@ const Race: React.FC = () => {
   useEffect(
     () =>
       onGuessResult((result) => {
+        if (result.taken) {
+          // A rival claimed the cell first; their number is already there.
+          dispatch({ type: "guessDropped", cell: result.cell });
+          return;
+        }
+        if (result.correct && result.points) {
+          const points = result.points;
+          setGain((g) => ({ id: (g?.id ?? 0) + 1, points }));
+        }
         if (!result.correct) {
           soundPlayer.cue("wrong");
         } else if (!result.completedBoard) {
@@ -145,9 +159,26 @@ const Race: React.FC = () => {
     [onGuessResult, timed]
   );
 
-  // Save the result to this browser's stats once the race ends.
+  // On a shared board, rivals' numbers rule out notes just like your own.
+  const seenBoard = useRef<{ key: string; board: number[] }>({
+    key: "",
+    board: [],
+  });
   useEffect(() => {
-    if (phase !== "finished" || !room || !me) return;
+    const seen = seenBoard.current;
+    seenBoard.current = { key: raceId, board: board ?? [] };
+    if (!turf || !board || seen.key !== raceId) return;
+    board.forEach((value, cell) => {
+      if (value && !seen.board[cell]) {
+        dispatch({ type: "rivalFilled", cell, value });
+      }
+    });
+  }, [turf, board, raceId]);
+
+  // Save the result to this browser's stats once the race ends. Turf wars
+  // aren't comparable to races, so they aren't recorded.
+  useEffect(() => {
+    if (phase !== "finished" || !room || !me || room.mode === "turf") return;
     if (room.mode === "timed") {
       recordTimedRun(
         raceId,
@@ -287,6 +318,17 @@ const Race: React.FC = () => {
   const countdown = countdownSeconds;
   const opponents = room.players.filter((p) => p.id !== me.id);
   const maxLives = STARTING_LIVES[room.difficulty];
+  // Turf war: each claimed cell is tinted with its owner's colour.
+  const colorOf = new Map(room.players.map((p) => [p.id, p.color]));
+  const cellColors = room.owners?.map((id) =>
+    id ? colorOf.get(id) ?? "var(--muted)" : undefined
+  );
+  // Every point on the board: its empty cells plus every capture.
+  const turfTotal =
+    turf && puzzle
+      ? puzzle.filter((v) => !v).length * TURF_CELL_POINTS +
+        geometry.units.length * TURF_CAPTURE_POINTS
+      : undefined;
 
   return (
     <div className="race">
@@ -314,7 +356,24 @@ const Race: React.FC = () => {
         >
           {clock !== null ? formatTime(timed ? clock + 999 : clock) : "—"}
         </span>
-        {timed ? (
+        {turf ? (
+          <span
+            className="board-count turf-score"
+            style={{ "--player": me.color } as React.CSSProperties}
+            aria-label={`${me.score} points`}
+          >
+            <FontAwesomeIcon icon={faFlag} />
+            {me.score}
+            <span className="board-count-label">
+              {me.score === 1 ? "point" : "points"}
+            </span>
+            {gain && phase === "playing" && (
+              <span key={gain.id} className="score-gain" aria-hidden>
+                +{gain.points}
+              </span>
+            )}
+          </span>
+        ) : timed ? (
           <span className="board-count" aria-label={`${boardNumber} boards done`}>
             <FontAwesomeIcon icon={faCheck} />
             {boardNumber}
@@ -339,6 +398,7 @@ const Race: React.FC = () => {
         players={room.players}
         cellCount={size * size}
         timed={timed}
+        turfTotal={turfTotal}
         selfId={me.id}
         winnerId={room.winnerId}
       />
@@ -351,6 +411,7 @@ const Race: React.FC = () => {
                 board={board}
                 givens={puzzle}
                 state={state}
+                cellColors={cellColors}
                 notesVisible={state.noteMode && canPlay}
                 onSelect={select}
                 onInspect={room.options.helper ? openInspector : undefined}
@@ -422,7 +483,7 @@ const Race: React.FC = () => {
           </p>
         </div>
 
-        {puzzle && opponents.length > 0 && (
+        {puzzle && opponents.length > 0 && !turf && (
           <aside className="rivals">
             <h3>Rivals</h3>
             {opponents.map((player) => (

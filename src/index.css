@@ -1987,7 +1987,7 @@ input:focus {
 
 .mode-options {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 8px;
 }
 
@@ -2476,5 +2476,49 @@ input:focus {
   }
   .confetti {
     display: none;
+  }
+}
+
+/* Turf war: claimed cells carry their owner's colour. The tint is an image
+   layer, so peer and selection highlights still show through underneath. */
+.cell.owned {
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--owner) 24%, transparent),
+    color-mix(in srgb, var(--owner) 24%, transparent)
+  );
+}
+
+.cell.owned .cell-value {
+  color: color-mix(in srgb, var(--owner) 60%, var(--given));
+  font-weight: 600;
+}
+
+.turf-score {
+  position: relative;
+  color: var(--player);
+  background: color-mix(in srgb, var(--player) 14%, transparent);
+}
+
+.score-gain {
+  position: absolute;
+  right: 6px;
+  top: 100%;
+  font-weight: 800;
+  pointer-events: none;
+  animation: score-gain 1.1s ease-out both;
+}
+
+@keyframes score-gain {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.8);
+  }
+  25% {
+    opacity: 1;
+    transform: translateY(0) scale(1.25);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px) scale(1);
   }
 }

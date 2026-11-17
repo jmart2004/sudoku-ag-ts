@@ -31,6 +31,9 @@ export interface GuessResult {
   value: number;
   correct: boolean;
   completedBoard?: boolean;
+  taken?: boolean;
+  points?: number;
+  captured?: number;
 }
 
 type Status = "connecting" | "open" | "closed";

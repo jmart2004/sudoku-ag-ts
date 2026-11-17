@@ -15,12 +15,19 @@ import {
   SelfView,
   TIMED_DURATIONS_MS,
   TIMED_PENALTY_MS,
+  TURF_CAPTURE_POINTS,
+  TURF_CELL_POINTS,
+  TURF_PENALTY_MS,
+  GAME_MODES,
 } from "../src/shared/protocol";
 import {
   DEFAULT_SIZE,
   Difficulty,
+  completedUnits,
   DIFFICULTIES,
   GeneratedPuzzle,
+  Geometry,
+  geometryFor,
   SIZES,
   STARTING_LIVES,
 } from "../src/shared/engine";
@@ -43,6 +50,9 @@ export class GameError extends Error {
 export interface GuessOutcome {
   correct: boolean;
   completedBoard: boolean;
+  taken?: boolean;
+  points?: number;
+  captured?: number;
 }
 
 interface Player {
@@ -61,6 +71,8 @@ interface Player {
   eliminated: boolean;
   finishedMs: number | null;
   lockedUntil: number | null;
+  score: number;
+  captures: number;
 }
 
 export class Room {
@@ -79,6 +91,12 @@ export class Room {
   endsAt: number | null = null;
   winnerId: string | null = null;
   standings: string[] | null = null;
+  // Turf war: the one board every player fills, and who claimed each cell.
+  private shared: {
+    board: number[];
+    owners: (string | null)[];
+    geometry: Geometry;
+  } | null = null;
   private timers: NodeJS.Timeout[] = [];
   emptySince: number | null = null;
 
@@ -111,6 +129,8 @@ export class Room {
       eliminated: false,
       finishedMs: null,
       lockedUntil: null,
+      score: 0,
+      captures: 0,
     };
     this.players.push(player);
     if (!this.hostId) {
@@ -184,7 +204,7 @@ export class Room {
 
   setMode(playerId: string, mode: GameMode, durationMs: number) {
     this.requireLobbyHost(playerId);
-    if (mode !== "race" && mode !== "timed") {
+    if (!GAME_MODES.includes(mode)) {
       throw new GameError("Unknown game mode.");
     }
     if (mode === "timed" && !TIMED_DURATIONS_MS.includes(durationMs)) {
@@ -200,8 +220,11 @@ export class Room {
     this.deck = [];
     this.winnerId = null;
     this.standings = null;
+    this.shared = null;
     for (const player of this.players) {
       this.dealBoard(player, 0);
+      player.score = 0;
+      player.captures = 0;
       player.lives = this.mode === "race" ? STARTING_LIVES[this.difficulty] : 0;
       player.mistakes = 0;
       player.eliminated = false;
@@ -241,6 +264,15 @@ export class Room {
     player.puzzle = this.deck[index].puzzle;
     player.regions = this.deck[index].regions;
     player.board = [...player.puzzle];
+    if (this.mode === "turf") {
+      // Every player's board is the same array, so a claim shows for all.
+      this.shared ??= {
+        board: player.board,
+        owners: Array(player.board.length).fill(null),
+        geometry: geometryFor(player.regions),
+      };
+      player.board = this.shared.board;
+    }
   }
 
   guess(playerId: string, cell: number, value: number): GuessOutcome {
@@ -265,16 +297,34 @@ export class Room {
       throw new GameError("Hold on, you're locked after that mistake.");
     }
     if (player.board[cell] !== 0) {
-      // Already filled; ignore duplicates from double taps.
-      return { correct: player.board[cell] === value, completedBoard: false };
+      // Already filled; ignore duplicates from double taps. On a shared
+      // board a rival may have got there first.
+      return {
+        correct: player.board[cell] === value,
+        completedBoard: false,
+        taken: !!this.shared && this.shared.owners[cell] !== player.id,
+      };
     }
     const correct = this.deck[player.boardIndex].solution[cell] === value;
     let completedBoard = false;
+    let points: number | undefined;
+    let captured: number | undefined;
     if (correct) {
       player.board[cell] = value;
+      if (this.shared) {
+        this.shared.owners[cell] = player.id;
+        captured = completedUnits(this.shared.geometry, player.board, cell).length;
+        points = TURF_CELL_POINTS + captured * TURF_CAPTURE_POINTS;
+        player.score += points;
+        player.captures += captured;
+      }
       if (!player.board.includes(0)) {
         completedBoard = true;
-        if (this.mode === "race") {
+        if (this.mode === "turf") {
+          // The board is full; finish() picks the winner by score.
+          for (const p of this.players) p.finishedMs = Date.now() - this.startAt!;
+          this.finish();
+        } else if (this.mode === "race") {
           player.finishedMs = Date.now() - this.startAt!;
           this.winnerId = player.id;
         } else {
@@ -289,11 +339,13 @@ export class Room {
           player.eliminated = true;
         }
       } else {
-        player.lockedUntil = Date.now() + TIMED_PENALTY_MS;
+        player.lockedUntil =
+          Date.now() +
+          (this.mode === "turf" ? TURF_PENALTY_MS : TIMED_PENALTY_MS);
       }
     }
-    this.checkForEnd();
-    return { correct, completedBoard };
+    if (this.phase === "playing") this.checkForEnd();
+    return { correct, completedBoard, points, captured };
   }
 
   backToLobby(playerId: string) {
@@ -310,6 +362,7 @@ export class Room {
     this.ensureHost();
     this.phase = "lobby";
     this.deck = [];
+    this.shared = null;
     this.startAt = null;
     this.endsAt = null;
     this.winnerId = null;
@@ -334,11 +387,18 @@ export class Room {
   private finish() {
     this.phase = "finished";
     this.clearTimers();
-    // Race: winner first. Timed: most boards. Then progress on the current
-    // board, then fewest mistakes.
+    // Race: winner first. Timed: most boards. Turf: most points, then most
+    // captures. Then progress on the current board, then fewest mistakes.
     const ranked = [...this.players].sort((a, b) => {
       if (a.id === this.winnerId) return -1;
       if (b.id === this.winnerId) return 1;
+      if (this.mode === "turf") {
+        return (
+          b.score - a.score ||
+          b.captures - a.captures ||
+          a.mistakes - b.mistakes
+        );
+      }
       return (
         (this.mode === "timed" ? b.boardIndex - a.boardIndex : 0) ||
         this.filledCount(b) - this.filledCount(a) ||
@@ -350,6 +410,9 @@ export class Room {
       const top = ranked[0];
       this.winnerId =
         top && (top.boardIndex > 0 || this.filledCount(top) > 0) ? top.id : null;
+    }
+    if (this.mode === "turf") {
+      this.winnerId = ranked[0]?.score ? ranked[0].id : null;
     }
   }
 
@@ -382,19 +445,28 @@ export class Room {
           lives: p.lives,
           mistakes: p.mistakes,
           filled: started
-            ? p.board.flatMap((v, i) => (v !== 0 && p.puzzle[i] === 0 ? [i] : []))
+            ? p.board.flatMap((v, i) =>
+                v !== 0 &&
+                p.puzzle[i] === 0 &&
+                (!this.shared || this.shared.owners[i] === p.id)
+                  ? [i]
+                  : []
+              )
             : [],
           givens: started ? p.puzzle.flatMap((v, i) => (v ? [i] : [])) : [],
           boardsCompleted:
             this.mode === "timed" ? p.boardIndex : p.finishedMs !== null ? 1 : 0,
           eliminated: p.eliminated,
           finishedMs: p.finishedMs,
+          score: p.score,
+          captures: p.captures,
         })
       ),
       startAt: this.startAt,
       endsAt: this.endsAt,
       winnerId: this.winnerId,
       standings: this.standings,
+      owners: started && this.shared ? this.shared.owners : null,
     };
   }
 

@@ -20,12 +20,21 @@ export const DEFAULT_ROOM_OPTIONS: RoomOptions = {
 export type RoomPhase = "lobby" | "countdown" | "playing" | "finished";
 
 // Race: first to finish one board wins. Timed: most boards in the time limit.
-export type GameMode = "race" | "timed";
+// Turf: everyone fills one shared board for points.
+export type GameMode = "race" | "timed" | "turf";
+export const GAME_MODES: GameMode[] = ["race", "timed", "turf"];
 
 export const TIMED_DURATIONS_MS = [3, 5, 10].map((m) => m * 60 * 1000);
 // In timed mode a wrong number locks your board briefly instead of costing
 // a life, so guessing every digit doesn't pay.
 export const TIMED_PENALTY_MS = 3000;
+
+// Turf war: a claimed cell is worth a point, and placing the last number of
+// a row, column or box captures it for a bonus. One number can capture up
+// to three at once. A wrong number locks you out while rivals keep claiming.
+export const TURF_CELL_POINTS = 1;
+export const TURF_CAPTURE_POINTS = 3;
+export const TURF_PENALTY_MS = 4000;
 
 export interface PlayerView {
   id: string;
@@ -42,6 +51,9 @@ export interface PlayerView {
   boardsCompleted: number;
   eliminated: boolean;
   finishedMs: number | null;
+  // Turf war: points so far, and rows, columns and boxes captured.
+  score: number;
+  captures: number;
 }
 
 export interface RoomView {
@@ -61,6 +73,9 @@ export interface RoomView {
   winnerId: string | null;
   // Player ids ordered best to worst once the game is finished.
   standings: string[] | null;
+  // Turf war: the id of the player who claimed each cell of the shared
+  // board (null for givens and empty cells).
+  owners: (string | null)[] | null;
 }
 
 export interface SelfView {
@@ -71,7 +86,8 @@ export interface SelfView {
   board: number[] | null;
   // Region id of each cell of the current puzzle (boxes, or jigsaw pieces).
   regions: number[] | null;
-  // Timed mode: input is locked until this server time after a mistake.
+  // Timed and turf modes: input is locked until this server time after a
+  // mistake.
   lockedUntil: number | null;
 }
 
@@ -98,5 +114,11 @@ export type ServerMessage =
       correct: boolean;
       // Timed mode: this guess finished the board and a new one was dealt.
       completedBoard?: boolean;
+      // Turf war: a rival claimed the cell first, so this guess didn't count.
+      taken?: boolean;
+      // Turf war: points this guess earned, and how many rows, columns and
+      // boxes it captured.
+      points?: number;
+      captured?: number;
     }
   | { type: "error"; message: string; fatal?: boolean };

@@ -6,12 +6,21 @@ first player to correctly fill every cell wins.
 
 - **Lobbies of 1–4 players.** The host picks the mode and difficulty and starts
   the game; a lobby of one works as solo practice.
-- **Two modes:**
+- **Three modes:**
   - **Race:** first to finish the board wins.
   - **Time attack:** whoever completes the most boards in 3, 5 or 10 minutes
     wins. Everyone gets the same boards in the same order, and finishing one
     deals the next. Instead of costing a life, a wrong number locks your board
     for 3 seconds.
+  - **Turf war:** everyone fills **one shared board** at the same time, and
+    every number shows up live in its owner's colour. Placing a number claims
+    its cell for 1 point. Whoever places the *last* number in a row, column
+    or box captures it for +3, and one number can capture all three at once.
+    That makes the easy cells dangerous: filling a line's second-to-last cell
+    hands the capture to a rival, so it can pay to sit on an answer until it's
+    worth more. A wrong number locks you out for 4 seconds while the others
+    keep claiming. The board is full when the game ends, and the most points
+    wins. It needs at least two players to be a contest.
 - **Board sizes from 4×4 to 9×9.** 4×4, 6×6 and 8×8 use rectangular boxes
   (2×2, 2×3, 2×4) and 9×9 is classic. 5×5 and 7×7 can't be split into
   rectangles, so they're **jigsaw** boards: irregular regions that each hold

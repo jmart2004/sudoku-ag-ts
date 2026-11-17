@@ -6,6 +6,8 @@ interface BoardProps {
   board: number[];
   givens: number[];
   state: BoardState;
+  // Shared boards: the colour of the player who claimed each cell.
+  cellColors?: (string | undefined)[];
   // Show empty note grids so players can see where marks will go.
   notesVisible: boolean;
   onSelect: (cell: number) => void;
@@ -19,6 +21,7 @@ const Board: React.FC<BoardProps> = ({
   board,
   givens,
   state,
+  cellColors,
   notesVisible,
   onSelect,
   onInspect,
@@ -62,6 +65,7 @@ const Board: React.FC<BoardProps> = ({
         ? "edge-bottom"
         : "",
       givens[cell] ? "given" : board[cell] ? "entered" : "",
+      cellColors?.[cell] ? "owned" : "",
       pendingValue && !board[cell] ? "pending" : "",
       peers.has(cell) ? "peer" : "",
       highlight && board[cell] === highlight ? "same" : "",
@@ -84,6 +88,7 @@ const Board: React.FC<BoardProps> = ({
         className={classNames}
         style={
           {
+            "--owner": cellColors?.[cell],
             "--wave-delay": wave.has(cell) ? `${distance * 35}ms` : undefined,
             // Each copy of a completed number shines in turn, top to bottom.
             "--shine-delay":

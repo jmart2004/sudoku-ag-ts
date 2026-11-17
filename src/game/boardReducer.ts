@@ -57,6 +57,10 @@ export type BoardAction =
       correct: boolean;
       board: number[];
     }
+  // The guess didn't count: on a shared board, a rival claimed the cell first.
+  | { type: "guessDropped"; cell: number }
+  // Someone else filled a cell of a shared board.
+  | { type: "rivalFilled"; cell: number; value: number }
   // Clears feedback only if nothing newer has arrived since.
   | { type: "clearFeedback"; feedbackId: number };
 
@@ -268,6 +272,21 @@ export function boardReducer(
         completedDigit: done.digit,
         wrong: null,
       };
+    }
+
+    case "guessDropped": {
+      const { [action.cell]: _, ...pending } = state.pending;
+      return { ...state, pending };
+    }
+
+    case "rivalFilled": {
+      // The same automatic note clean-up as for your own correct answers.
+      const notes = [...state.notes];
+      notes[action.cell] = 0;
+      for (const peer of state.geometry.peers[action.cell]) {
+        notes[peer] &= ~bit(action.value);
+      }
+      return { ...state, notes };
     }
 
     case "clearFeedback":

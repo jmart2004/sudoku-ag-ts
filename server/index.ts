@@ -178,17 +178,11 @@ function handle(conn: Connection, msg: ClientMessage) {
       room.start(playerId, () => broadcast(room));
       break;
     case "guess": {
-      const { correct, completedBoard } = room.guess(
-        playerId,
-        msg.cell,
-        msg.value
-      );
       send(conn.socket, {
         type: "guessResult",
         cell: msg.cell,
         value: msg.value,
-        correct,
-        completedBoard,
+        ...room.guess(playerId, msg.cell, msg.value),
       });
       break;
     }

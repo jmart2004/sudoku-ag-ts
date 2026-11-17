@@ -243,3 +243,34 @@ test("a stale clearFeedback leaves newer feedback alone", () => {
   state = boardReducer(state, { type: "clearFeedback", feedbackId: state.feedbackId });
   expect(state.wrong).toBeNull();
 });
+
+test("a rival's number on a shared board clears the notes it rules out", () => {
+  let state = boardReducer(initialBoardState(), {
+    type: "setNotes",
+    cell: 0,
+    mask: bit(4) | bit(5),
+  });
+  state = boardReducer(state, { type: "setNotes", cell: 1, mask: bit(5) | bit(6) });
+  state = boardReducer(state, { type: "setNotes", cell: 80, mask: bit(5) });
+  const undoSteps = state.history.length;
+  state = boardReducer(state, { type: "rivalFilled", cell: 0, value: 5 });
+  expect(state.notes[0]).toBe(0);
+  expect(state.notes[1]).toBe(bit(6));
+  // Not a peer of cell 0, so untouched.
+  expect(state.notes[80]).toBe(bit(5));
+  // Automatic, so not something undo steps back through.
+  expect(state.history.length).toBe(undoSteps);
+});
+
+test("a guess beaten to the cell by a rival is dropped without feedback", () => {
+  let state = boardReducer(initialBoardState(), {
+    type: "guessSent",
+    cell: emptyCell,
+    value: solution[emptyCell],
+  });
+  state = boardReducer(state, { type: "guessDropped", cell: emptyCell });
+  expect(state.pending).toEqual({});
+  expect(state.justFilled).toBeNull();
+  expect(state.wrong).toBeNull();
+  expect(state.feedbackId).toBe(0);
+});

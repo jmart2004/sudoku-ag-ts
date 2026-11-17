@@ -1,7 +1,16 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFlagCheckered, faStopwatch } from "@fortawesome/free-solid-svg-icons";
-import { GameMode, TIMED_DURATIONS_MS } from "../shared/protocol";
+import {
+  faFlag,
+  faFlagCheckered,
+  faStopwatch,
+} from "@fortawesome/free-solid-svg-icons";
+import {
+  GameMode,
+  TIMED_DURATIONS_MS,
+  TURF_CAPTURE_POINTS,
+  TURF_PENALTY_MS,
+} from "../shared/protocol";
 
 interface ModePickerProps {
   mode: GameMode;
@@ -22,6 +31,12 @@ const MODES: { mode: GameMode; name: string; desc: string; icon: typeof faStopwa
     name: "Time attack",
     desc: "Most boards before the clock runs out",
     icon: faStopwatch,
+  },
+  {
+    mode: "turf",
+    name: "Turf war",
+    desc: "Share one board and capture its lines",
+    icon: faFlag,
   },
 ];
 
@@ -68,6 +83,15 @@ const ModePicker: React.FC<ModePickerProps> = ({
       <p className="muted small">
         Everyone gets the same boards in the same order. Finish one and the
         next appears. A wrong number locks your board for 3 seconds.
+      </p>
+    )}
+    {mode === "turf" && (
+      <p className="muted small">
+        Everyone fills the same board at once. A number claims its cell for
+        1 point, and the <em>last</em> number in a row, column or box
+        captures it for +{TURF_CAPTURE_POINTS}. Leave a line one short and a
+        rival takes it, so sometimes it pays to sit on an answer. A wrong
+        number locks you out for {TURF_PENALTY_MS / 1000} seconds.
       </p>
     )}
   </div>

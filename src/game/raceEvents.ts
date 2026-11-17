@@ -1,6 +1,10 @@
 // Turns successive room snapshots into short announcements for toasts.
 
-import { PlayerView, RoomView } from "../shared/protocol";
+import {
+  PlayerView,
+  RoomView,
+  TURF_CAPTURE_POINTS,
+} from "../shared/protocol";
 
 export type EventTone = "info" | "good" | "bad";
 
@@ -48,7 +52,21 @@ export function diffRoom(
       });
     }
     const bothPlaying = next.phase === "playing" && prev.phase === "playing";
-    if (!you && bothPlaying && next.mode === "timed") {
+    // The move that fills a shared board also ends the game, so compare
+    // captures whenever a turf game was running.
+    if (next.mode === "turf") {
+      const captured = player.captures - old.captures;
+      // Single captures happen all game; only the big ones are news.
+      if (!you && prev.phase === "playing" && captured > 1) {
+        events.push({
+          text: `${player.name} captured ${captured} lines at once (+${
+            captured * TURF_CAPTURE_POINTS
+          })`,
+          tone: "bad",
+          color,
+        });
+      }
+    } else if (!you && bothPlaying && next.mode === "timed") {
       if (player.boardsCompleted > old.boardsCompleted) {
         events.push({
           text: `${player.name} finished board ${player.boardsCompleted}`,
