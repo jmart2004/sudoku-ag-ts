@@ -19,6 +19,7 @@ import {
 } from "../shared/protocol";
 import { Difficulty } from "../shared/engine";
 import { isNativeApp, siteOrigin } from "../platform";
+import { getSavedIcon, saveIcon } from "./playerIcon";
 
 interface Session {
   code: string;
@@ -56,6 +57,8 @@ interface GameContextProps {
   setDifficulty: (difficulty: Difficulty) => void;
   setMode: (mode: GameMode, durationMs: number) => void;
   setSize: (size: number) => void;
+  // Saves your avatar icon and, in a lobby, shows it to everyone.
+  setIcon: (icon: string) => void;
   setOptions: (options: Partial<RoomOptions>) => void;
   startRace: () => void;
   guess: (cell: number, value: number) => void;
@@ -248,13 +251,22 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({
       rejoining,
       clearError: () => setError(null),
       createLobby: (name, difficulty) =>
-        send({ type: "create", name, difficulty }),
+        send({ type: "create", name, difficulty, icon: getSavedIcon() }),
       joinLobby: (code, name) =>
-        send({ type: "join", code: code.trim().toUpperCase(), name }),
+        send({
+          type: "join",
+          code: code.trim().toUpperCase(),
+          name,
+          icon: getSavedIcon(),
+        }),
       leaveLobby,
       setDifficulty: (difficulty) => send({ type: "setDifficulty", difficulty }),
       setMode: (mode, durationMs) => send({ type: "setMode", mode, durationMs }),
       setSize: (size) => send({ type: "setSize", size }),
+      setIcon: (icon) => {
+        saveIcon(icon);
+        if (room?.phase === "lobby") send({ type: "setIcon", icon });
+      },
       setOptions: (options) => send({ type: "setOptions", options }),
       startRace: () => send({ type: "start" }),
       guess: (cell, value) => send({ type: "guess", cell, value }),

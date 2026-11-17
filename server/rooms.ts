@@ -8,6 +8,7 @@ import {
   GameMode,
   MAX_NAME_LENGTH,
   MAX_PLAYERS,
+  PLAYER_ICONS,
   PlayerView,
   RoomOptions,
   RoomPhase,
@@ -60,6 +61,7 @@ interface Player {
   token: string;
   name: string;
   color: string;
+  icon: string;
   connected: boolean;
   // Index into the room's deck; in timed mode, also the boards completed.
   boardIndex: number;
@@ -105,7 +107,7 @@ export class Room {
     this.difficulty = difficulty;
   }
 
-  addPlayer(rawName: string): Player {
+  addPlayer(rawName: string, rawIcon?: unknown): Player {
     if (this.phase !== "lobby") {
       throw new GameError("That game has already started.");
     }
@@ -119,6 +121,7 @@ export class Room {
       token: randomBytes(16).toString("hex"),
       name: this.uniqueName(name),
       color: PLAYER_COLORS.find((c) => !usedColors.has(c))!,
+      icon: cleanIcon(rawIcon),
       connected: true,
       boardIndex: 0,
       puzzle: [],
@@ -168,6 +171,15 @@ export class Room {
 
   getPlayer(playerId: string) {
     return this.players.find((p) => p.id === playerId);
+  }
+
+  // Any player can change their own icon while in the lobby.
+  setIcon(playerId: string, icon: unknown) {
+    const player = this.getPlayer(playerId);
+    if (!player || this.phase !== "lobby") {
+      throw new GameError("That can only be changed in the lobby.");
+    }
+    player.icon = cleanIcon(icon);
   }
 
   setDifficulty(playerId: string, difficulty: Difficulty) {
@@ -441,6 +453,7 @@ export class Room {
           id: p.id,
           name: p.name,
           color: p.color,
+          icon: p.icon,
           connected: p.connected,
           lives: p.lives,
           mistakes: p.mistakes,
@@ -517,6 +530,10 @@ export class Room {
 function cleanName(raw: unknown) {
   const name = typeof raw === "string" ? raw.trim().replace(/\s+/g, " ") : "";
   return name.slice(0, MAX_NAME_LENGTH) || "Player";
+}
+
+function cleanIcon(raw: unknown) {
+  return (PLAYER_ICONS as readonly unknown[]).includes(raw) ? (raw as string) : "";
 }
 
 export class RoomRegistry {

@@ -113,7 +113,7 @@ const Lobby: React.FC = () => {
                 {player.id === room.hostId && (
                   <FontAwesomeIcon icon={faCrown} className="seat-crown" />
                 )}
-                <Avatar name={player.name} color={player.color} size="lg" />
+                <Avatar name={player.name} color={player.color} icon={player.icon} size="lg" />
                 <span className="seat-name">{player.name}</span>
                 {player.id === self.playerId && <span className="seat-you">You</span>}
               </div>

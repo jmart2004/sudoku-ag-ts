@@ -131,7 +131,7 @@ function handle(conn: Connection, msg: ClientMessage) {
     case "create": {
       detach(conn, true);
       const room = registry.create(msg.difficulty);
-      const player = room.addPlayer(msg.name);
+      const player = room.addPlayer(msg.name, msg.icon);
       attach(conn, room, player.id, player.token);
       return;
     }
@@ -139,7 +139,7 @@ function handle(conn: Connection, msg: ClientMessage) {
       const room = registry.get(msg.code);
       if (!room) throw new GameError("No lobby with that code.");
       detach(conn, true);
-      const player = room.addPlayer(msg.name);
+      const player = room.addPlayer(msg.name, msg.icon);
       attach(conn, room, player.id, player.token);
       return;
     }
@@ -164,6 +164,9 @@ function handle(conn: Connection, msg: ClientMessage) {
   switch (msg.type) {
     case "setDifficulty":
       room.setDifficulty(playerId, msg.difficulty);
+      break;
+    case "setIcon":
+      room.setIcon(playerId, msg.icon);
       break;
     case "setOptions":
       room.setOptions(playerId, msg.options);

@@ -9,7 +9,7 @@ import { isNativeApp } from "../platform";
 // app, and a status bar that matches the theme. Renders nothing.
 const NativeBridge: React.FC = () => {
   const navigate = useNavigate();
-  const theme = useTheme();
+  const { theme } = useTheme();
 
   useEffect(() => {
     if (!isNativeApp) return;
@@ -32,13 +32,10 @@ const NativeBridge: React.FC = () => {
 
   useEffect(() => {
     if (!isNativeApp) return;
-    const dark = theme === "dark";
-    StatusBar.setStyle({ style: dark ? Style.Dark : Style.Light }).catch(
-      () => {}
-    );
-    StatusBar.setBackgroundColor({ color: dark ? "#0b0f1a" : "#f5f6fb" }).catch(
-      () => {}
-    );
+    StatusBar.setStyle({
+      style: theme.dark ? Style.Dark : Style.Light,
+    }).catch(() => {});
+    StatusBar.setBackgroundColor({ color: theme.bg }).catch(() => {});
   }, [theme]);
 
   return null;

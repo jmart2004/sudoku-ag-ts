@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { useGame } from "../game/GameContext";
-import { MAX_NAME_LENGTH, MAX_PLAYERS } from "../shared/protocol";
+import { MAX_PLAYERS } from "../shared/protocol";
 import { Difficulty } from "../shared/engine";
 import { getSavedName, saveName } from "../utility/Stats";
 import DifficultyPicker from "../components/DifficultyPicker";
-import Avatar from "../components/ui/Avatar";
+import NameField from "../components/NameField";
 import HeroBoard from "../components/HeroBoard";
 
 const HomePage: React.FC = () => {
@@ -46,18 +46,7 @@ const HomePage: React.FC = () => {
       </section>
 
       <section className="panel play-panel">
-        <label className="field">
-          <span className="field-label">Your name</span>
-          <span className="name-input">
-            <Avatar name={trimmedName || "?"} color="var(--accent)" />
-            <input
-              value={name}
-              maxLength={MAX_NAME_LENGTH}
-              placeholder="Enter a name"
-              onChange={(e) => setName(e.target.value)}
-            />
-          </span>
-        </label>
+        <NameField name={name} onChange={setName} />
 
         <div className="play-options">
           <div className="play-option">

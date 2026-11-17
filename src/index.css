@@ -35,7 +35,25 @@
   --medium: #d97706;
   --hard: #e11d48;
 
+  /* Personality: each theme can swap the typefaces, corner radius, the
+     accent gradient and the pattern drawn over the page background. */
+  --accent-2: #d946ef;
+  --on-accent: #ffffff;
+  --gradient: linear-gradient(90deg, #6366f1, #d946ef 55%, #f97316);
+  --bg-fill: var(--bg);
+  --pattern: linear-gradient(var(--pattern-ink) 1px, transparent 1px),
+    linear-gradient(90deg, var(--pattern-ink) 1px, transparent 1px);
+  --pattern-size: 44px 44px;
+  --pattern-ink: rgba(99, 102, 241, 0.07);
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
+  --font-display: var(--font);
+  --font-digit: var(--font);
+  --display-spacing: -0.02em;
+  --glow: 0 0 0 transparent;
+
   --radius: 16px;
+  --radius-sm: 10px;
   /* Board width: fill a phone's width, cap on larger screens. Each board
      divides it by its own size, so every size takes the same space. */
   --board: calc(100vw - 32px);
@@ -81,6 +99,9 @@
   --accent-strong: #6366f1;
   --accent-soft: #1f2645;
   --accent-text: #0b0f1a;
+  --accent-2: #e879f9;
+  --gradient: linear-gradient(90deg, #818cf8, #e879f9 55%, #fb923c);
+  --pattern-ink: rgba(129, 140, 248, 0.07);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
   --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.5);
   --box-line: #5b6788;
@@ -101,7 +122,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root:not([data-theme]) {
     --bg: #0b0f1a;
     --gold: #facc15;
     --gold-bg: #3d3209;
@@ -116,6 +137,9 @@
     --accent-strong: #6366f1;
     --accent-soft: #1f2645;
     --accent-text: #0b0f1a;
+    --accent-2: #e879f9;
+    --gradient: linear-gradient(90deg, #818cf8, #e879f9 55%, #fb923c);
+    --pattern-ink: rgba(129, 140, 248, 0.07);
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
     --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.5);
     --box-line: #5b6788;
@@ -155,11 +179,16 @@ body {
       var(--bg-glow),
       transparent
     ),
-    var(--bg);
+    radial-gradient(
+      700px 500px at 100% 100%,
+      color-mix(in srgb, var(--accent-2) 9%, transparent),
+      transparent
+    ),
+    var(--bg-fill);
   background-attachment: fixed;
   color: var(--text);
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    sans-serif;
+  font-family: var(--font);
+  transition: background-color 0.3s, color 0.3s;
   font-feature-settings: "cv11", "ss01";
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
@@ -341,12 +370,37 @@ input:focus {
 .btn.primary {
   background: linear-gradient(180deg, var(--accent), var(--accent-strong));
   border-color: transparent;
-  color: #fff;
-  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
+  color: var(--on-accent);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 32%, transparent),
+    var(--glow);
+  position: relative;
+  overflow: hidden;
+}
+
+/* A sheen that sweeps across on hover. */
+.btn.primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.28) 50%,
+    transparent 70%
+  );
+  transform: translateX(-120%);
+  pointer-events: none;
+}
+
+.btn.primary:hover:not(:disabled)::after {
+  transform: translateX(120%);
+  transition: transform 0.6s ease-out;
 }
 
 .btn.primary:hover:not(:disabled) {
-  box-shadow: 0 8px 22px rgba(99, 102, 241, 0.42);
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--accent) 45%, transparent),
+    var(--glow);
+  transform: translateY(-1px);
 }
 
 .btn.ghost {
@@ -594,7 +648,7 @@ input:focus {
 }
 
 .gradient-text {
-  background: linear-gradient(90deg, #6366f1, #d946ef 55%, #f97316);
+  background: var(--gradient);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -1262,7 +1316,7 @@ input:focus {
   font-size: 8rem;
   font-weight: 800;
   line-height: 1;
-  background: linear-gradient(180deg, var(--accent), #d946ef);
+  background: linear-gradient(180deg, var(--accent), var(--accent-2));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -1561,7 +1615,10 @@ input:focus {
 /* Settings panel (gear icon) */
 
 .modal.settings {
-  max-width: 460px;
+  max-width: 540px;
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
   gap: 18px;
   text-align: left;
 }
@@ -2521,4 +2578,649 @@ input:focus {
     opacity: 0;
     transform: translateY(-10px) scale(1);
   }
+}
+
+/* ---------- Themes ---------- */
+
+/* Each block sets every colour token, so a theme never inherits a stray
+   colour from another one. Listed in src/game/theme.ts. */
+
+:root[data-theme="paper"] {
+  --bg: #f3ead7;
+  --bg-glow: rgba(179, 38, 30, 0.05);
+  --surface: #fbf6ea;
+  --surface-2: #efe5cf;
+  --border: #cdbf9f;
+  --text: #1f1a14;
+  --muted: #74684f;
+  --accent: #1f1a14;
+  --accent-strong: #000000;
+  --accent-soft: #eadfc6;
+  --accent-text: #fbf6ea;
+  --accent-2: #b3261e;
+  --on-accent: #fbf6ea;
+  --gradient: linear-gradient(90deg, #b3261e, #7a1712);
+  --shadow: 3px 3px 0 rgba(31, 26, 20, 0.12);
+  --shadow-lg: 6px 6px 0 rgba(31, 26, 20, 0.16);
+  --box-line: #1f1a14;
+  --cell-line: #cdbf9f;
+  --cell-bg: #fbf6ea;
+  --peer: #f1e7d0;
+  --same: #e6d6b1;
+  --selected: #dcc68f;
+  --given: #1f1a14;
+  --entered: #1d4e89;
+  --wave: #cfe3c0;
+  --wrong-bg: #f3cfc6;
+  --wrong: #b3261e;
+  --heart: #b3261e;
+  --gold: #b7791f;
+  --gold-bg: #f0dba3;
+  --gold-text: #7a4f0d;
+  --easy: #3f7d3a;
+  --medium: #a8650b;
+  --hard: #b3261e;
+  --pattern: radial-gradient(rgba(31, 26, 20, 0.09) 1px, transparent 1.2px);
+  --pattern-size: 5px 5px;
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-digit: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --display-spacing: -0.01em;
+  --glow: 0 0 0 transparent;
+  --radius: 4px;
+  --radius-sm: 3px;
+  color-scheme: light;
+}
+
+:root[data-theme="neon"] {
+  --bg: #0a0418;
+  --bg-glow: rgba(255, 61, 242, 0.22);
+  --surface: #150a2e;
+  --surface-2: #1e1040;
+  --border: #3a2470;
+  --text: #f3eaff;
+  --muted: #a493cf;
+  --accent: #ff3df2;
+  --accent-strong: #c81fd6;
+  --accent-soft: #2e1150;
+  --accent-text: #0a0418;
+  --accent-2: #22e4ff;
+  --on-accent: #ffffff;
+  --gradient: linear-gradient(90deg, #22e4ff, #ff3df2 55%, #ffe14d);
+  --shadow: 0 0 0 1px rgba(255, 61, 242, 0.08), 0 10px 30px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 0 60px rgba(255, 61, 242, 0.25), 0 24px 60px rgba(0, 0, 0, 0.6);
+  --box-line: #22e4ff;
+  --cell-line: #2c1a57;
+  --cell-bg: #120828;
+  --peer: #1b0e3a;
+  --same: #3a1466;
+  --selected: #5a1a8f;
+  --given: #f3eaff;
+  --entered: #22e4ff;
+  --wave: #0f4a4f;
+  --wrong-bg: #4a0f2a;
+  --wrong: #ff5c7a;
+  --heart: #ff3d7f;
+  --gold: #ffe14d;
+  --gold-bg: #40350a;
+  --gold-text: #ffe14d;
+  --easy: #39ff9e;
+  --medium: #ffe14d;
+  --hard: #ff5c7a;
+  --pattern: linear-gradient(rgba(34, 228, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 228, 255, 0.1) 1px, transparent 1px);
+  --pattern-size: 40px 40px;
+  --font: "Space Grotesk", "Inter", -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Space Grotesk", "Inter", sans-serif;
+  --font-digit: "Space Grotesk", "Inter", sans-serif;
+  --display-spacing: 0;
+  --glow: 0 0 18px rgba(255, 61, 242, 0.55);
+  --radius: 10px;
+  --radius-sm: 6px;
+  color-scheme: dark;
+}
+
+:root[data-theme="sakura"] {
+  --bg: #fff3f6;
+  --bg-glow: rgba(232, 84, 140, 0.16);
+  --surface: #ffffff;
+  --surface-2: #fdeaf0;
+  --border: #f6d3de;
+  --text: #4a2338;
+  --muted: #a0778a;
+  --accent: #e8548c;
+  --accent-strong: #d13a75;
+  --accent-soft: #ffe6ee;
+  --accent-text: #ffffff;
+  --accent-2: #a78bfa;
+  --on-accent: #ffffff;
+  --gradient: linear-gradient(90deg, #e8548c, #a78bfa 60%, #f472b6);
+  --shadow: 0 1px 2px rgba(209, 58, 117, 0.05), 0 10px 28px rgba(209, 58, 117, 0.1);
+  --shadow-lg: 0 24px 60px rgba(209, 58, 117, 0.22);
+  --box-line: #c2738f;
+  --cell-line: #f6d9e2;
+  --cell-bg: #ffffff;
+  --peer: #fff1f5;
+  --same: #ffd9e6;
+  --selected: #ffbdd3;
+  --given: #4a2338;
+  --entered: #8b5cf6;
+  --wave: #d3f2dc;
+  --wrong-bg: #ffe0d6;
+  --wrong: #e0452f;
+  --heart: #e8548c;
+  --gold: #e0a100;
+  --gold-bg: #fff0c2;
+  --gold-text: #946800;
+  --easy: #2fa86b;
+  --medium: #d98324;
+  --hard: #d6336c;
+  --pattern: radial-gradient(circle at 10px 10px, rgba(232, 84, 140, 0.14) 3px, transparent 3.5px),
+    radial-gradient(circle at 34px 30px, rgba(167, 139, 250, 0.14) 2px, transparent 2.5px);
+  --pattern-size: 48px 48px;
+  --font: "Nunito", "Inter", -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Nunito", "Inter", sans-serif;
+  --font-digit: "Nunito", "Inter", sans-serif;
+  --display-spacing: -0.01em;
+  --glow: 0 0 0 transparent;
+  --radius: 24px;
+  --radius-sm: 14px;
+  color-scheme: light;
+}
+
+:root[data-theme="forest"] {
+  --bg: #0c1712;
+  --bg-glow: rgba(111, 207, 151, 0.12);
+  --surface: #13231b;
+  --surface-2: #1a2f24;
+  --border: #274536;
+  --text: #e6f0e4;
+  --muted: #8fa898;
+  --accent: #f2b544;
+  --accent-strong: #dc9a1f;
+  --accent-soft: #33301a;
+  --accent-text: #1a1405;
+  --accent-2: #6fcf97;
+  --on-accent: #1a1405;
+  --gradient: linear-gradient(90deg, #6fcf97, #f2b544 60%, #f08a4b);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.55);
+  --box-line: #6f927d;
+  --cell-line: #223a2d;
+  --cell-bg: #13231b;
+  --peer: #192d23;
+  --same: #2b4a2f;
+  --selected: #3f6a3c;
+  --given: #e6f0e4;
+  --entered: #f2b544;
+  --wave: #1d5237;
+  --wrong-bg: #4a1c17;
+  --wrong: #ff8370;
+  --heart: #ff7a6b;
+  --gold: #f2c94c;
+  --gold-bg: #3d3209;
+  --gold-text: #f7dc7a;
+  --easy: #6fcf97;
+  --medium: #f2b544;
+  --hard: #ff8370;
+  --pattern: radial-gradient(rgba(111, 207, 151, 0.13) 1.2px, transparent 1.5px);
+  --pattern-size: 22px 22px;
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
+  --font-digit: var(--font);
+  --display-spacing: -0.01em;
+  --glow: 0 0 0 transparent;
+  --radius: 14px;
+  --radius-sm: 9px;
+  color-scheme: dark;
+}
+
+:root[data-theme="lagoon"] {
+  --bg: #ecf8f7;
+  --bg-glow: rgba(14, 165, 233, 0.16);
+  --surface: #ffffff;
+  --surface-2: #e4f3f2;
+  --border: #c9e4e2;
+  --text: #0b2e33;
+  --muted: #5a7f84;
+  --accent: #0d9488;
+  --accent-strong: #0b7c72;
+  --accent-soft: #d9f3f0;
+  --accent-text: #ffffff;
+  --accent-2: #0ea5e9;
+  --on-accent: #ffffff;
+  --gradient: linear-gradient(90deg, #0ea5e9, #0d9488 55%, #84cc16);
+  --shadow: 0 1px 2px rgba(11, 46, 51, 0.04), 0 8px 24px rgba(13, 148, 136, 0.1);
+  --shadow-lg: 0 24px 60px rgba(11, 46, 51, 0.2);
+  --box-line: #1f5d63;
+  --cell-line: #d2e8e6;
+  --cell-bg: #ffffff;
+  --peer: #eef8f7;
+  --same: #c9eeea;
+  --selected: #9fe0d9;
+  --given: #0b2e33;
+  --entered: #0369a1;
+  --wave: #d5f2c4;
+  --wrong-bg: #fee2e2;
+  --wrong: #dc2626;
+  --heart: #f43f5e;
+  --gold: #eab308;
+  --gold-bg: #fef3c7;
+  --gold-text: #a16207;
+  --easy: #15803d;
+  --medium: #c2700a;
+  --hard: #e11d48;
+  --pattern: radial-gradient(
+    ellipse 30px 10px at 50% 0,
+    transparent 9px,
+    rgba(13, 148, 136, 0.12) 9.5px,
+    rgba(13, 148, 136, 0.12) 10.5px,
+    transparent 11px
+  );
+  --pattern-size: 60px 22px;
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: var(--font);
+  --font-digit: var(--font);
+  --display-spacing: -0.02em;
+  --glow: 0 0 0 transparent;
+  --radius: 18px;
+  --radius-sm: 11px;
+  color-scheme: light;
+}
+
+:root[data-theme="sunset"] {
+  --bg: #1a0f24;
+  --bg-fill: linear-gradient(180deg, #2a1338 0%, #1a0f24 45%, #2b1320 100%);
+  --bg-glow: rgba(255, 138, 76, 0.22);
+  --surface: #27162f;
+  --surface-2: #331c3c;
+  --border: #4a2a52;
+  --text: #fdeee3;
+  --muted: #bf9aa8;
+  --accent: #ff8a4c;
+  --accent-strong: #f0652a;
+  --accent-soft: #46222c;
+  --accent-text: #1a0f24;
+  --accent-2: #ff4d8d;
+  --on-accent: #ffffff;
+  --gradient: linear-gradient(90deg, #ffd166, #ff8a4c 45%, #ff4d8d);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.55);
+  --box-line: #b07a8c;
+  --cell-line: #40243f;
+  --cell-bg: #231330;
+  --peer: #2c1838;
+  --same: #55263f;
+  --selected: #7a3344;
+  --given: #fdeee3;
+  --entered: #ffb37a;
+  --wave: #1f4a45;
+  --wrong-bg: #521528;
+  --wrong: #ff6b81;
+  --heart: #ff4d8d;
+  --gold: #ffd166;
+  --gold-bg: #45350d;
+  --gold-text: #ffe08f;
+  --easy: #6ee7a8;
+  --medium: #ffd166;
+  --hard: #ff6b81;
+  --pattern: repeating-linear-gradient(
+    180deg,
+    transparent 0 26px,
+    rgba(255, 138, 76, 0.07) 26px 27px
+  );
+  --pattern-size: auto;
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: var(--font);
+  --font-digit: var(--font);
+  --display-spacing: -0.02em;
+  --glow: 0 0 0 transparent;
+  --radius: 16px;
+  --radius-sm: 10px;
+  color-scheme: dark;
+}
+
+/* ---------- Theme flourishes ---------- */
+
+/* The pattern over the page background, fading out down the page. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: var(--pattern);
+  background-size: var(--pattern-size);
+  -webkit-mask-image: linear-gradient(180deg, #000, transparent 85%);
+  mask-image: linear-gradient(180deg, #000, transparent 85%);
+  pointer-events: none;
+}
+
+h1,
+h2,
+h3,
+.brand,
+.lobby-code,
+.race-timer,
+.mode-name,
+.countdown {
+  font-family: var(--font-display);
+}
+
+.hero h1,
+.settings-head h2,
+.results h2 {
+  letter-spacing: var(--display-spacing);
+}
+
+.cell-value,
+.hero-cell,
+.pad-digit,
+.fit-digit {
+  font-family: var(--font-digit);
+}
+
+input,
+.btn,
+.icon-btn,
+.mode-option,
+.pad-key {
+  border-radius: var(--radius-sm);
+}
+
+/* Panels pick up a breath of the accent at the top edge. */
+.panel {
+  background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--accent) 5%, transparent),
+      transparent 90px
+    ),
+    var(--surface);
+}
+
+.brand:hover .logo {
+  transform: rotate(-8deg) scale(1.08);
+}
+
+.logo {
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.brand span:last-child {
+  background: var(--gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.mode-option:not(:disabled):hover,
+.theme-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.mode-option {
+  transition: border-color 0.15s, background 0.15s, transform 0.15s,
+    box-shadow 0.15s;
+}
+
+/* The home page board drifts, with the accent glowing behind it. */
+.hero-board {
+  animation: hero-float 7s ease-in-out infinite;
+  box-shadow: var(--shadow-lg),
+    0 0 90px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+@keyframes hero-float {
+  0%,
+  100% {
+    transform: rotate(3deg) translateY(0);
+  }
+  50% {
+    transform: rotate(1.5deg) translateY(-10px);
+  }
+}
+
+.avatar {
+  color: #fff;
+}
+
+.avatar-icon {
+  font-size: 0.95em;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25));
+}
+
+/* Avatar button on the name field, with a small pencil badge. */
+.avatar-btn {
+  position: relative;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+
+.avatar-btn:hover {
+  transform: scale(1.08);
+}
+
+.avatar-edit {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.5rem;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.icon-picker {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 48px));
+  gap: 6px;
+  animation: fade-in 0.2s ease-out;
+}
+
+.icon-choice {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition: transform 0.12s, color 0.12s, border-color 0.12s,
+    background 0.12s;
+}
+
+.icon-choice:hover {
+  color: var(--text);
+  transform: translateY(-2px);
+}
+
+.icon-choice.selected {
+  color: var(--on-accent);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Theme picker */
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.theme-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  align-items: center;
+  padding: 8px;
+  text-align: left;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+
+.theme-card.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.theme-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  align-self: end;
+}
+
+.theme-blurb {
+  font-size: 0.7rem;
+  color: var(--muted);
+  align-self: start;
+  line-height: 1.2;
+}
+
+/* A tiny picture of the theme: its page, a card, and two accent cells. */
+.theme-swatch {
+  grid-row: span 2;
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: var(--sw-a);
+  background: linear-gradient(var(--sw-surface), var(--sw-surface)) center / 30px
+      30px no-repeat,
+    var(--sw-bg);
+  border: 1px solid color-mix(in srgb, var(--sw-a) 30%, transparent);
+}
+
+.theme-swatch i {
+  position: absolute;
+  bottom: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--sw-a);
+  right: 13px;
+}
+
+.theme-swatch i:last-child {
+  background: var(--sw-b);
+  right: 3px;
+}
+
+.theme-swatch-system {
+  color: #6366f1;
+  background: linear-gradient(135deg, #ffffff 50%, #121829 50%);
+  border: 1px solid var(--border);
+}
+
+/* Arcade: neon tubes and a little glow on everything important. */
+:root[data-theme="neon"] h1,
+:root[data-theme="neon"] .race-timer,
+:root[data-theme="neon"] .lobby-code span {
+  text-shadow: 0 0 14px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+:root[data-theme="neon"] .board,
+:root[data-theme="neon"] .hero-board {
+  box-shadow: 0 0 0 1px var(--box-line), 0 0 28px rgba(34, 228, 255, 0.45),
+    0 0 80px rgba(255, 61, 242, 0.25);
+}
+
+:root[data-theme="neon"] .cell.entered .cell-value {
+  text-shadow: 0 0 10px currentColor;
+}
+
+:root[data-theme="neon"] .panel,
+:root[data-theme="neon"] .modal {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+:root[data-theme="neon"] .eyebrow,
+:root[data-theme="neon"] .btn {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* Newsprint: ink rules, hard shadows, no gloss. */
+:root[data-theme="paper"] .panel,
+:root[data-theme="paper"] .modal,
+:root[data-theme="paper"] .btn,
+:root[data-theme="paper"] .track {
+  border: 1.5px solid var(--text);
+}
+
+:root[data-theme="paper"] .panel {
+  background: var(--surface);
+}
+
+:root[data-theme="paper"] .btn.ghost {
+  border-color: transparent;
+}
+
+:root[data-theme="paper"] .btn.primary::after {
+  display: none;
+}
+
+:root[data-theme="paper"] .hero h1 {
+  font-weight: 700;
+  font-style: italic;
+}
+
+:root[data-theme="paper"] .brand span:last-child {
+  background: none;
+  color: var(--text);
+  font-style: italic;
+}
+
+:root[data-theme="paper"] .cell-value {
+  font-weight: 700;
+}
+
+:root[data-theme="paper"] .cell.entered .cell-value {
+  font-weight: 600;
+  font-style: italic;
+}
+
+/* Sakura: everything a little rounder and bouncier. */
+:root[data-theme="sakura"] .board,
+:root[data-theme="sakura"] .hero-board {
+  border-radius: 20px;
+}
+
+:root[data-theme="sakura"] .btn,
+:root[data-theme="sakura"] .pad-key {
+  font-weight: 800;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-board {
+    animation: none;
+  }
+}
+
+:root[data-theme="paper"] .board,
+:root[data-theme="paper"] .hero-board {
+  border-radius: 2px;
 }

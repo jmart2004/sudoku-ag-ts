@@ -58,6 +58,7 @@ const RaceTrack: React.FC<RaceTrackProps> = ({
               <Avatar
                 name={player.name}
                 color={player.color}
+                icon={player.icon}
                 size="sm"
                 dimmed={!player.connected || player.eliminated}
               />

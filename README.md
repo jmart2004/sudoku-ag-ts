@@ -47,7 +47,7 @@ first player to correctly fill every cell wins.
   box still need. Tap a digit to enter it, or add them all as notes. The host
   can switch this helper off in the settings so everyone races without it.
 - **Settings** (gear icon): lobby rules the host sets for everyone, and your
-  own preferences (sound effects, dark mode). New lobby options are added in
+  own preferences (sound effects, theme, icon). New lobby options are added in
   `RoomOptions` (`src/shared/protocol.ts`) and listed in
   `src/components/SettingsDialog.tsx`.
 - **Sound.** Every correct number plays its own note (1–9 climb a pentatonic
@@ -60,8 +60,15 @@ first player to correctly fill every cell wins.
   also countdown, board-done, win and out-of-lives cues. Everything is
   synthesized with Web Audio, so there are no sound files, and sound can be
   turned off in the settings.
-- **Light and dark themes,** following your system until you choose one in the
-  settings.
+- **Eight themes,** chosen in the settings: Daylight, Midnight, Newsprint,
+  Arcade, Sakura, Forest, Lagoon and Sunset. Each has its own colours,
+  typeface, corner shapes and background pattern. "Auto" follows your device
+  between Daylight and Midnight. To add one, list it in `src/game/theme.ts`
+  and give it a `:root[data-theme="…"]` block in `src/index.css`.
+- **Player icons.** Tap your avatar next to the name box (or open the
+  settings) to swap your initial for one of 20 icons. Everyone in the lobby
+  sees it. The list is `PLAYER_ICONS` in `src/shared/protocol.ts`, with the
+  artwork in `src/game/playerIcon.ts`.
 - **Refresh-safe.** Reloading the tab mid-race puts you back in your seat with
   your progress intact.
 - **Rematches.** After the results, the host can take everyone back to the lobby.

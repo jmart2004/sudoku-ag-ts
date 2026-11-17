@@ -9,10 +9,15 @@ import React, {
   useState,
 } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faXmark } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCircleHalfStroke,
+  faXmark,
+} from "@fortawesome/free-solid-svg-icons";
 import { useGame } from "../game/GameContext";
 import { soundPlayer } from "../game/sounds";
-import { setTheme, useTheme } from "../game/theme";
+import { setTheme, THEMES, useTheme } from "../game/theme";
+import { useSavedIcon } from "../game/playerIcon";
+import IconPicker from "./IconPicker";
 import { RoomOptions } from "../shared/protocol";
 
 // Lobby options, in the order they're listed. Each needs an entry in
@@ -67,8 +72,10 @@ const SettingRow: React.FC<SettingRowProps> = ({
 );
 
 const SettingsDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const { room, self, setOptions } = useGame();
-  const theme = useTheme();
+  const { room, self, setOptions, setIcon } = useGame();
+  const { choice } = useTheme();
+  const icon = useSavedIcon();
+  const me = room?.players.find((p) => p.id === self?.playerId);
   const [muted, setMuted] = useState(soundPlayer.muted);
   useEffect(() => soundPlayer.subscribe(() => setMuted(soundPlayer.muted)), []);
 
@@ -140,10 +147,68 @@ const SettingsDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               if (on) soundPlayer.correct(5);
             }}
           />
-          <SettingRow
-            title="Dark mode"
-            checked={theme === "dark"}
-            onChange={(dark) => setTheme(dark ? "dark" : "light")}
+        </section>
+
+        <section className="settings-section">
+          <div className="settings-section-head">
+            <span className="eyebrow">Theme</span>
+          </div>
+          <div className="theme-grid" role="radiogroup" aria-label="Theme">
+            <button
+              role="radio"
+              aria-checked={choice === "system"}
+              className={`theme-card${choice === "system" ? " selected" : ""}`}
+              onClick={() => setTheme("system")}
+            >
+              <span className="theme-swatch theme-swatch-system">
+                <FontAwesomeIcon icon={faCircleHalfStroke} />
+              </span>
+              <span className="theme-name">Auto</span>
+              <span className="theme-blurb">Match this device</span>
+            </button>
+            {THEMES.map((t) => (
+              <button
+                key={t.id}
+                role="radio"
+                aria-checked={choice === t.id}
+                className={`theme-card${choice === t.id ? " selected" : ""}`}
+                onClick={() => setTheme(t.id)}
+              >
+                <span
+                  className="theme-swatch"
+                  style={
+                    {
+                      "--sw-bg": t.bg,
+                      "--sw-surface": t.preview[0],
+                      "--sw-a": t.preview[1],
+                      "--sw-b": t.preview[2],
+                    } as React.CSSProperties
+                  }
+                >
+                  <FontAwesomeIcon icon={t.icon} />
+                  <i />
+                  <i />
+                </span>
+                <span className="theme-name">{t.name}</span>
+                <span className="theme-blurb">{t.blurb}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="settings-section">
+          <div className="settings-section-head">
+            <span className="eyebrow">Your icon</span>
+            <span className="muted small">
+              {room && room.phase !== "lobby"
+                ? "Shows from the next lobby."
+                : "Shown on your avatar."}
+            </span>
+          </div>
+          <IconPicker
+            value={icon}
+            initial={me?.name.charAt(0).toUpperCase() || "A"}
+            onChange={setIcon}
           />
         </section>
       </div>

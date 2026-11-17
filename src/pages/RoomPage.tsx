@@ -3,11 +3,10 @@
 import React, { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useGame } from "../game/GameContext";
-import { MAX_NAME_LENGTH } from "../shared/protocol";
 import { getSavedName, saveName } from "../utility/Stats";
 import Lobby from "../components/Lobby";
 import Race from "../components/Race";
-import Avatar from "../components/ui/Avatar";
+import NameField from "../components/NameField";
 
 const RoomPage: React.FC = () => {
   const { code = "" } = useParams<{ code: string }>();
@@ -52,19 +51,7 @@ const RoomPage: React.FC = () => {
             again for the next one.
           </p>
         )}
-        <label className="field">
-          <span className="field-label">Your name</span>
-          <span className="name-input">
-            <Avatar name={trimmedName || "?"} color="var(--accent)" />
-            <input
-              autoFocus
-              value={name}
-              maxLength={MAX_NAME_LENGTH}
-              placeholder="Enter a name"
-              onChange={(e) => setName(e.target.value)}
-            />
-          </span>
-        </label>
+        <NameField name={name} onChange={setName} autoFocus />
         <button
           type="submit"
           className="btn primary block"

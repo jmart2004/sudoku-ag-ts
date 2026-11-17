@@ -26,7 +26,7 @@ const OpponentBoard: React.FC<OpponentBoardProps> = ({
       style={{ "--player": player.color } as React.CSSProperties}
     >
       <div className="opponent-head">
-        <Avatar name={player.name} color={player.color} size="sm" />
+        <Avatar name={player.name} color={player.color} icon={player.icon} size="sm" />
         <span className="opponent-name">{player.name}</span>
         <span className="opponent-percent">
           {player.eliminated ? "Out" : `${percent}%`}

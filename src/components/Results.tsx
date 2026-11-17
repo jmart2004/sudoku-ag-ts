@@ -44,7 +44,7 @@ const Results: React.FC = () => {
             <>
               <div className="winner-avatar">
                 <FontAwesomeIcon icon={faCrown} className="crown" />
-                <Avatar name={winner.name} color={winner.color} size="lg" />
+                <Avatar name={winner.name} color={winner.color} icon={winner.icon} size="lg" />
               </div>
               <h2>{youWon ? "You won!" : `${winner.name} wins`}</h2>
               <p className="muted">
@@ -97,7 +97,7 @@ const Results: React.FC = () => {
                 style={{ "--player": player.color } as React.CSSProperties}
               >
                 <span className="place">{PLACES[index]}</span>
-                <Avatar name={player.name} color={player.color} size="sm" />
+                <Avatar name={player.name} color={player.color} icon={player.icon} size="sm" />
                 <span className="standing-name">
                   {player.name}
                   {id === self.playerId && <span className="muted"> (you)</span>}

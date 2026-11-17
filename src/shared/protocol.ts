@@ -6,6 +6,32 @@ export const MAX_PLAYERS = 4;
 export const COUNTDOWN_MS = 3000;
 export const MAX_NAME_LENGTH = 16;
 
+// Icons a player can show on their avatar instead of their initial. The
+// artwork for each lives in src/game/playerIcon.ts.
+export const PLAYER_ICONS = [
+  "cat",
+  "dog",
+  "dragon",
+  "ghost",
+  "rocket",
+  "robot",
+  "crow",
+  "fish",
+  "frog",
+  "hippo",
+  "otter",
+  "spider",
+  "bolt",
+  "fire",
+  "star",
+  "leaf",
+  "moon",
+  "snowflake",
+  "knight",
+  "gem",
+] as const;
+export type PlayerIcon = (typeof PLAYER_ICONS)[number];
+
 // Rules the host sets for everyone in the lobby. To add one, add it here
 // with its default and describe it in ROOM_OPTION_INFO in SettingsDialog.
 export interface RoomOptions {
@@ -40,6 +66,8 @@ export interface PlayerView {
   id: string;
   name: string;
   color: string;
+  // A PlayerIcon, or "" to show the name's initial.
+  icon: string;
   connected: boolean;
   lives: number;
   mistakes: number;
@@ -92,8 +120,9 @@ export interface SelfView {
 }
 
 export type ClientMessage =
-  | { type: "create"; name: string; difficulty: Difficulty }
-  | { type: "join"; code: string; name: string }
+  | { type: "create"; name: string; difficulty: Difficulty; icon?: string }
+  | { type: "join"; code: string; name: string; icon?: string }
+  | { type: "setIcon"; icon: string }
   | { type: "rejoin"; code: string; playerId: string; token: string }
   | { type: "setDifficulty"; difficulty: Difficulty }
   | { type: "setSize"; size: number }
