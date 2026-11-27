@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useGame } from "../game/GameContext";
 import Logo from "./ui/Logo";
 import SettingsButton from "./SettingsButton";
+import { isOffline } from "../platform";
 
 const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { status } = useGame();
@@ -12,7 +13,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <nav className="topbar">
         <Link to="/" className="brand">
           <Logo />
-          <span>Sudoku Race</span>
+          <span>{isOffline ? "Sudoku" : "Sudoku Race"}</span>
         </Link>
         <div className="topbar-actions">
           {status !== "open" && (

@@ -5,6 +5,11 @@
 //
 // Writes dist/sudoku-race.apk. Pass --open to open Android Studio instead of
 // building with Gradle.
+//
+// Pass --offline for a single-player app that needs no server or internet:
+// the game runs entirely on the phone. Writes dist/sudoku-offline.apk.
+//
+//   npm run android:offline
 
 import { execSync } from "child_process";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "fs";
@@ -16,9 +21,12 @@ const ANDROID = path.join(ROOT, "android");
 const DEFAULT_SITE_URL = "https://sudoku-race.onrender.com";
 const isWindows = process.platform === "win32";
 
+const offline = process.argv.includes("--offline");
 const siteUrl = (process.env.SITE_URL ?? DEFAULT_SITE_URL).replace(/\/+$/, "");
 const siteHost = new URL(siteUrl).host;
-const env = { ...process.env, REACT_APP_SITE_URL: siteUrl };
+const env = offline
+  ? { ...process.env, REACT_APP_OFFLINE: "1" }
+  : { ...process.env, REACT_APP_SITE_URL: siteUrl };
 
 // Gradle needs a JDK 21 and the Android SDK; find the usual install spots so
 // it works without any setup when Android Studio is installed.
@@ -55,7 +63,7 @@ function findSdk() {
 
 const run = (cmd, cwd = ROOT) => execSync(cmd, { cwd, env, stdio: "inherit" });
 
-console.log(`Building the app against ${siteUrl}`);
+console.log(offline ? "Building the offline app" : `Building the app against ${siteUrl}`);
 run("npx react-scripts build");
 run("npx cap sync android");
 
@@ -67,7 +75,7 @@ if (process.argv.includes("--open")) {
   const gradlew = path.join(ANDROID, isWindows ? "gradlew.bat" : "gradlew");
   run(`"${gradlew}" assembleDebug -PsiteHost=${siteHost}`, ANDROID);
   mkdirSync(path.join(ROOT, "dist"), { recursive: true });
-  const apk = path.join(ROOT, "dist/sudoku-race.apk");
+  const apk = path.join(ROOT, offline ? "dist/sudoku-offline.apk" : "dist/sudoku-race.apk");
   copyFileSync(path.join(ANDROID, "app/build/outputs/apk/debug/app-debug.apk"), apk);
   console.log(`\nAPK ready: ${apk}`);
 }

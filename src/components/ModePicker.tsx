@@ -2,6 +2,7 @@ import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFlagCheckered, faStopwatch } from "@fortawesome/free-solid-svg-icons";
 import { GameMode, TIMED_DURATIONS_MS } from "../shared/protocol";
+import { isOffline } from "../platform";
 
 interface ModePickerProps {
   mode: GameMode;
@@ -13,14 +14,18 @@ interface ModePickerProps {
 const MODES: { mode: GameMode; name: string; desc: string; icon: typeof faStopwatch }[] = [
   {
     mode: "race",
-    name: "Race",
-    desc: "First to finish the board wins",
+    name: isOffline ? "Classic" : "Race",
+    desc: isOffline
+      ? "Solve one board before you run out of lives"
+      : "First to finish the board wins",
     icon: faFlagCheckered,
   },
   {
     mode: "timed",
     name: "Time attack",
-    desc: "Most boards before the clock runs out",
+    desc: isOffline
+      ? "Solve as many boards as you can in the time"
+      : "Most boards before the clock runs out",
     icon: faStopwatch,
   },
 ];

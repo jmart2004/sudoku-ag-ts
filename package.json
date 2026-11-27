@@ -40,6 +40,8 @@
     "eject": "react-scripts eject",
     "android:apk": "node scripts/android.mjs",
     "android:open": "node scripts/android.mjs --open",
+    "android:offline": "node scripts/android.mjs --offline",
+    "build:offline": "REACT_APP_OFFLINE=1 react-scripts build",
     "android:icons": "capacitor-assets generate --android"
   },
   "eslintConfig": {

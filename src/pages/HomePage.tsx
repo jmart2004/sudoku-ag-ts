@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowRight, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faArrowRight, faPlay, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { useGame } from "../game/GameContext";
 import { MAX_NAME_LENGTH, MAX_PLAYERS } from "../shared/protocol";
 import { Difficulty } from "../shared/engine";
@@ -9,6 +9,7 @@ import { getSavedName, saveName } from "../utility/Stats";
 import DifficultyPicker from "../components/DifficultyPicker";
 import Avatar from "../components/ui/Avatar";
 import HeroBoard from "../components/HeroBoard";
+import { isOffline } from "../platform";
 
 const HomePage: React.FC = () => {
   const { room, createLobby, joinLobby, status } = useGame();
@@ -26,6 +27,57 @@ const HomePage: React.FC = () => {
 
   const trimmedName = name.trim();
   const ready = !!trimmedName && status === "open";
+
+  if (isOffline) {
+    const playerName = trimmedName || "You";
+    return (
+      <main className="page home">
+        <section className="hero">
+          <div className="hero-copy">
+            <h1>
+              Sudoku,
+              <br />
+              <span className="gradient-text">anywhere.</span>
+            </h1>
+            <p className="lead">
+              Fresh, fairly graded puzzles from 4×4 to 9×9, generated right on
+              your device. No internet needed.
+            </p>
+          </div>
+          <HeroBoard />
+        </section>
+
+        <section className="panel play-panel">
+          <label className="field">
+            <span className="field-label">Your name (optional)</span>
+            <span className="name-input">
+              <Avatar name={playerName} color="var(--accent)" />
+              <input
+                value={name}
+                maxLength={MAX_NAME_LENGTH}
+                placeholder="You"
+                onChange={(e) => setName(e.target.value)}
+              />
+            </span>
+          </label>
+          <div className="play-option">
+            <h2>Difficulty</h2>
+            <DifficultyPicker value={difficulty} onChange={setDifficulty} />
+            <button
+              className="btn primary big block"
+              disabled={status !== "open"}
+              onClick={() => {
+                if (trimmedName) saveName(trimmedName);
+                createLobby(playerName, difficulty);
+              }}
+            >
+              <FontAwesomeIcon icon={faPlay} /> Play
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="page home">

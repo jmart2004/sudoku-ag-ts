@@ -1,4 +1,5 @@
-// Owns the websocket to the game server and exposes the current room to the app.
+// Owns the websocket to the game server (or, offline, the in-page one) and
+// exposes the current room to the app.
 
 import React, {
   createContext,
@@ -18,7 +19,8 @@ import {
   ServerMessage,
 } from "../shared/protocol";
 import { Difficulty } from "../shared/engine";
-import { isNativeApp, siteOrigin } from "../platform";
+import { isNativeApp, isOffline, siteOrigin } from "../platform";
+import { LocalSocket } from "./localSocket";
 
 interface Session {
   code: string;
@@ -65,6 +67,8 @@ const GameContext = createContext<GameContextProps | undefined>(undefined);
 const SESSION_KEY = "sudokuSession";
 
 const loadSession = (): Session | null => {
+  // The offline game lives in memory, so there's no seat to get back to.
+  if (isOffline) return null;
   try {
     const raw = sessionStorage.getItem(SESSION_KEY);
     return raw ? JSON.parse(raw) : null;
@@ -74,6 +78,7 @@ const loadSession = (): Session | null => {
 };
 
 const saveSession = (session: Session | null) => {
+  if (isOffline) return;
   try {
     if (session) {
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
@@ -112,7 +117,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({
   const [lostSeatCode, setLostSeatCode] = useState<string | null>(null);
   const [rejoining, setRejoining] = useState(() => loadSession() !== null);
 
-  const socketRef = useRef<WebSocket | null>(null);
+  const socketRef = useRef<WebSocket | LocalSocket | null>(null);
   const queueRef = useRef<ClientMessage[]>([]);
   const sessionRef = useRef<Session | null>(loadSession());
   const guessListeners = useRef(new Set<(result: GuessResult) => void>());
@@ -159,7 +164,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const connect = () => {
       setStatus("connecting");
-      const socket = new WebSocket(socketUrl());
+      const socket = isOffline ? new LocalSocket() : new WebSocket(socketUrl());
       socketRef.current = socket;
       socket.onopen = () => {
         attempts = 0;
@@ -172,7 +177,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({
           .splice(0)
           .forEach((msg) => socket.send(JSON.stringify(msg)));
       };
-      socket.onmessage = (event) => handleMessage(JSON.parse(event.data));
+      socket.onmessage = (event: { data: string }) => handleMessage(JSON.parse(event.data));
       socket.onclose = () => {
         if (disposed) return;
         setStatus("closed");

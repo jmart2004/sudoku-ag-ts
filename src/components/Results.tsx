@@ -6,6 +6,7 @@ import { useGame } from "../game/GameContext";
 import { formatTime } from "../utility/Stats";
 import Avatar from "./ui/Avatar";
 import Confetti from "./Confetti";
+import { isOffline } from "../platform";
 
 const PLACES = ["1st", "2nd", "3rd", "4th"];
 
@@ -106,7 +107,7 @@ const Results: React.FC = () => {
         <div className="modal-actions">
           {isHost ? (
             <button className="btn primary" onClick={backToLobby}>
-              Back to lobby
+              {isOffline ? "Play again" : "Back to lobby"}
             </button>
           ) : (
             <p className="muted small">Waiting for the host to start the next race…</p>

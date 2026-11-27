@@ -1,13 +1,14 @@
 // Everything that happens inside a lobby: waiting room, the race, results.
 
 import React, { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, Navigate, useParams } from "react-router-dom";
 import { useGame } from "../game/GameContext";
 import { MAX_NAME_LENGTH } from "../shared/protocol";
 import { getSavedName, saveName } from "../utility/Stats";
 import Lobby from "../components/Lobby";
 import Race from "../components/Race";
 import Avatar from "../components/ui/Avatar";
+import { isOffline } from "../platform";
 
 const RoomPage: React.FC = () => {
   const { code = "" } = useParams<{ code: string }>();
@@ -17,6 +18,11 @@ const RoomPage: React.FC = () => {
 
   if (room && self && room.code === upperCode) {
     return room.phase === "lobby" ? <Lobby /> : <Race />;
+  }
+
+  // Offline there's nothing to join: the game was lost with the page.
+  if (isOffline) {
+    return <Navigate to="/" replace />;
   }
 
   if (rejoining) {

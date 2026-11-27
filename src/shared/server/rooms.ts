@@ -1,7 +1,8 @@
 // Lobby and race state. The server owns the solution and judges every guess,
-// so clients never see answers they haven't earned.
+// so clients never see answers they haven't earned. This runs in Node (the
+// game server) and in the browser (the offline build, see LocalServer), so it
+// sticks to APIs both have.
 
-import { randomBytes, randomUUID } from "crypto";
 import {
   COUNTDOWN_MS,
   DEFAULT_ROOM_OPTIONS,
@@ -15,7 +16,7 @@ import {
   SelfView,
   TIMED_DURATIONS_MS,
   TIMED_PENALTY_MS,
-} from "../src/shared/protocol";
+} from "../protocol";
 import {
   DEFAULT_SIZE,
   Difficulty,
@@ -23,10 +24,12 @@ import {
   GeneratedPuzzle,
   SIZES,
   STARTING_LIVES,
-} from "../src/shared/engine";
+} from "../engine";
 import { PuzzlePool } from "./puzzlePool";
 
-const puzzles = new PuzzlePool();
+// Created on first use, so merely loading this module costs nothing.
+let pool: PuzzlePool | null = null;
+const puzzles = () => (pool ??= new PuzzlePool());
 
 const PLAYER_COLORS = ["#f97316", "#3b82f6", "#22c55e", "#d946ef"];
 // No 0/O/1/I so codes are easy to read aloud.
@@ -79,7 +82,7 @@ export class Room {
   endsAt: number | null = null;
   winnerId: string | null = null;
   standings: string[] | null = null;
-  private timers: NodeJS.Timeout[] = [];
+  private timers: ReturnType<typeof setTimeout>[] = [];
   emptySince: number | null = null;
 
   constructor(code: string, difficulty: Difficulty) {
@@ -97,8 +100,8 @@ export class Room {
     const name = cleanName(rawName);
     const usedColors = new Set(this.players.map((p) => p.color));
     const player: Player = {
-      id: randomUUID(),
-      token: randomBytes(16).toString("hex"),
+      id: randomHex(16),
+      token: randomHex(16),
       name: this.uniqueName(name),
       color: PLAYER_COLORS.find((c) => !usedColors.has(c))!,
       connected: true,
@@ -179,7 +182,7 @@ export class Room {
     }
     this.size = size;
     // Start finding puzzles of this size while the lobby fills up.
-    puzzles.warm(size);
+    puzzles().warm(size);
   }
 
   setMode(playerId: string, mode: GameMode, durationMs: number) {
@@ -235,7 +238,7 @@ export class Room {
     // In timed mode draw one ahead so the next board is ready instantly.
     const needed = this.mode === "timed" ? index + 2 : index + 1;
     while (this.deck.length < needed) {
-      this.deck.push(puzzles.take(this.size, this.difficulty));
+      this.deck.push(puzzles().take(this.size, this.difficulty));
     }
     player.boardIndex = index;
     player.puzzle = this.deck[index].puzzle;
@@ -441,6 +444,24 @@ export class Room {
     return candidate;
   }
 }
+
+// Web Crypto exists in browsers and in Node 19+; fall back to Math.random,
+// which is fine for lobby codes and seat tokens on a single device.
+function randomBytes(count: number): number[] {
+  const bytes = new Uint8Array(count);
+  const webCrypto = (globalThis as { crypto?: Crypto }).crypto;
+  if (webCrypto?.getRandomValues) {
+    webCrypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < count; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  return Array.from(bytes);
+}
+
+const randomHex = (count: number) =>
+  randomBytes(count)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 
 function cleanName(raw: unknown) {
   const name = typeof raw === "string" ? raw.trim().replace(/\s+/g, " ") : "";

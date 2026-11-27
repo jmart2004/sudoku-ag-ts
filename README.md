@@ -57,6 +57,22 @@ first player to correctly fill every cell wins.
   your progress intact.
 - **Rematches.** After the results, the host can take everyone back to the lobby.
 
+## Offline single-player app
+
+There's also a version that needs no server or internet at all: the game
+logic runs right in the app, puzzles are generated on the phone, and you play
+solo in either mode, on any board size and difficulty.
+
+```bash
+npm run android:offline   # writes dist/sudoku-offline.apk
+npm run build:offline     # the same thing as a static web build in build/
+```
+
+Copy the APK to an Android phone and open it to install (allow installs from
+unknown sources when asked). The offline build is the regular app compiled
+with `REACT_APP_OFFLINE=1`: the server's room logic (`src/shared/server`)
+runs in the page behind a stand-in socket (`src/game/localSocket.ts`).
+
 ## Running it
 
 ```bash

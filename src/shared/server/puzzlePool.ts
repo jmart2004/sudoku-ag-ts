@@ -1,6 +1,7 @@
 // Keeps a few puzzles of each size and difficulty ready so starting a game is
 // instant. Finding a well-graded puzzle can take dozens of attempts, so the
-// pool runs one attempt per event-loop turn instead of blocking the server.
+// pool runs one attempt per event-loop turn instead of blocking the server
+// (or, in the offline build, the page).
 // 9×9 is kept warm from the start; other sizes once a lobby picks them.
 
 import {
@@ -12,9 +13,13 @@ import {
   generatePuzzle,
   GeneratedPuzzle,
   MAX_ATTEMPTS,
-} from "../src/shared/engine";
+} from "../engine";
 
 const POOL_SIZE = 3;
+
+// One attempt per macrotask, so the server (or the page) stays responsive.
+const defer: (fn: () => void) => void =
+  typeof setImmediate === "function" ? setImmediate : (fn) => setTimeout(fn, 0);
 
 interface Search {
   ready: GeneratedPuzzle[];
@@ -61,7 +66,7 @@ export class PuzzlePool {
     );
     if (!needed) return;
     this.refilling = true;
-    setImmediate(() => {
+    defer(() => {
       const [k, search] = needed;
       const [size, difficulty] = k.split("-");
       const attempt = attemptPuzzle(Number(size), difficulty as Difficulty);

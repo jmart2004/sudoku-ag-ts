@@ -11,7 +11,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { Share } from "@capacitor/share";
 import { useGame } from "../game/GameContext";
-import { inviteLinkFor, isNativeApp } from "../platform";
+import { inviteLinkFor, isNativeApp, isOffline } from "../platform";
 import { MAX_PLAYERS } from "../shared/protocol";
 import { isJigsawSize } from "../shared/engine";
 import DifficultyPicker from "./DifficultyPicker";
@@ -65,6 +65,13 @@ const Lobby: React.FC = () => {
 
   return (
     <main className="page lobby">
+      {isOffline ? (
+        <section className="panel">
+          <span className="eyebrow">New game</span>
+          <h2>Set up your puzzle</h2>
+        </section>
+      ) : (
+      <>
       <section className="panel lobby-code-panel">
         <span className="eyebrow">Lobby code</span>
         <div className="lobby-code" aria-label={`Lobby code ${room.code}`}>
@@ -121,6 +128,8 @@ const Lobby: React.FC = () => {
           })}
         </div>
       </section>
+      </>
+      )}
 
       <section className="panel">
         <div className="panel-head">
@@ -170,7 +179,9 @@ const Lobby: React.FC = () => {
             {room.mode === "timed"
               ? `Start ${room.durationMs / 60000}-minute time attack`
               : room.players.length === 1
-              ? "Start solo practice"
+              ? isOffline
+                ? "Start game"
+                : "Start solo practice"
               : "Start race"}
           </button>
         ) : (
@@ -186,7 +197,7 @@ const Lobby: React.FC = () => {
             navigate("/");
           }}
         >
-          Leave lobby
+          {isOffline ? "Back" : "Leave lobby"}
         </button>
       </div>
     </main>
